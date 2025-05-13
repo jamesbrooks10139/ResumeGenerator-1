@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resume Generator - Register</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Register</h1>
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required>
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" required>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone (optional)</label>
+        <input type="tel" id="phone">
+      </div>
+      <div class="form-group">
+        <label for="personalEmail">Personal Email (optional)</label>
+        <input type="email" id="personalEmail">
+      </div>
+      <div class="form-group">
+        <label for="linkedinUrl">LinkedIn URL (optional)</label>
+        <input type="url" id="linkedinUrl">
+      </div>
+      <div class="form-group">
+        <label for="githubUrl">GitHub URL (optional)</label>
+        <input type="url" id="githubUrl">
+      </div>
+      <button type="submit" class="btn btn-primary">Register</button>
+    </form>
+    <p class="text-center">
+      Already have an account? 
+      <a href="login.html" id="loginLink">Login here</a>
+    </p>
+  </div>
+  <script src="register.js"></script>
+</body>
+</html> 
