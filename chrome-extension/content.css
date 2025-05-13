@@ -44,7 +44,7 @@
   background: white;
   border-radius: 8px;
   width: 90%;
-  max-width: 600px;
+  max-width: 800px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -86,6 +86,7 @@
   padding: 20px;
   overflow-y: auto;
   flex-grow: 1;
+  max-height: calc(90vh - 200px);
 }
 
 .resume-modal-job-description {
@@ -101,87 +102,19 @@
   overflow-y: auto;
 }
 
+/* Remove the old actions section */
 .resume-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
+  display: none;
 }
 
-.resume-modal-button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.resume-modal-button.primary {
-  background-color: #4299e1;
-  color: white;
-  border: none;
-}
-
-.resume-modal-button.primary:hover {
-  background-color: #3182ce;
-}
-
-.resume-modal-button.secondary {
-  background-color: #edf2f7;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-}
-
-.resume-modal-button.secondary:hover {
-  background-color: #e2e8f0;
-}
-
-.resume-modal-loading {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(255, 255, 255, 0.9);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  border-radius: 8px;
-}
-
-.resume-modal-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #4299e1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.resume-modal-result {
-  padding: 20px;
-  background-color: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  margin-top: 20px;
-  max-height: 300px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #2d3748;
-}
-
+/* Update the download section to include generate button */
 .resume-modal-download {
+  padding: 20px;
   display: flex;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 10px;
   justify-content: center;
+  border-top: 1px solid #e2e8f0;
+  background: white;
 }
 
 .resume-modal-download button {
@@ -200,6 +133,357 @@
   background-color: #3182ce;
 }
 
+/* Style for the generate button */
+.resume-modal-download button.generate {
+  background-color: #0ea5e9;
+}
+
+.resume-modal-download button.generate:hover {
+  background-color: #0284c7;
+}
+
 .hidden {
   display: none !important;
+}
+
+/* Docx Preview Styles */
+.resume-modal-docx-preview {
+  width: 100%;
+  height: 400px;
+  overflow: auto;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.resume-modal-docx-preview .docx-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.resume-modal-docx-preview .docx-wrapper .page {
+  margin: 0 auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: white;
+  margin-bottom: 20px;
+}
+
+.resume-modal-docx-preview .docx-wrapper .page:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure proper font rendering */
+.resume-modal-docx-preview .docx-wrapper * {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Improve readability */
+.resume-modal-docx-preview .docx-wrapper p {
+  line-height: 1.5;
+  margin: 0.5em 0;
+}
+
+.resume-modal-docx-preview .docx-wrapper h1, 
+.resume-modal-docx-preview .docx-wrapper h2, 
+.resume-modal-docx-preview .docx-wrapper h3 {
+  margin: 1em 0 0.5em;
+  line-height: 1.2;
+}
+
+/* Style lists */
+.resume-modal-docx-preview .docx-wrapper ul,
+.resume-modal-docx-preview .docx-wrapper ol {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+
+.resume-modal-docx-preview .docx-wrapper li {
+  margin: 0.25em 0;
+}
+
+/* Table styles */
+.resume-modal-docx-preview .docx-wrapper table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.resume-modal-docx-preview .docx-wrapper th,
+.resume-modal-docx-preview .docx-wrapper td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5em;
+}
+
+.resume-modal-docx-preview .docx-wrapper th {
+  background-color: #f7fafc;
+}
+
+/* Improve spacing */
+.resume-modal-docx-preview .docx-wrapper .section {
+  margin: 1em 0;
+}
+
+/* Ensure proper page breaks */
+.resume-modal-docx-preview .docx-wrapper .page-break {
+  page-break-after: always;
+  break-after: page;
+}
+
+/* Improve print styles */
+@media print {
+  .resume-modal-docx-preview .docx-wrapper {
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .resume-modal-docx-preview .docx-wrapper .page {
+    box-shadow: none;
+    margin: 0;
+  }
+}
+
+/* Resume Content Styles */
+.resume-content {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #2d3748;
+  line-height: 1.5;
+  padding: 20px;
+}
+
+.resume-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.resume-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #1a202c;
+}
+
+.resume-contact {
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.resume-section {
+  margin-bottom: 25px;
+}
+
+.resume-section h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+}
+
+.resume-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 5px;
+}
+
+.resume-experience,
+.resume-education,
+.resume-certification {
+  margin-bottom: 20px;
+}
+
+.resume-position,
+.resume-program,
+.resume-issued {
+  font-size: 14px;
+  color: #4a5568;
+  margin-bottom: 10px;
+}
+
+.resume-experience ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.resume-experience li {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.resume-skills {
+  margin-bottom: 15px;
+}
+
+.resume-skills p {
+  font-size: 14px;
+  color: #4a5568;
+}
+
+/* Update modal styles for better resume display */
+.resume-modal-docx-preview {
+  max-height: 600px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.resume-modal {
+  max-width: 800px;
+}
+
+.resume-modal-content {
+  max-height: calc(90vh - 200px);
+  overflow-y: hidden;
+}
+
+/* Improve button styles */
+.resume-modal-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resume-modal-button.primary {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+}
+
+.resume-modal-button.primary:hover {
+  background-color: #0284c7;
+}
+
+.resume-modal-button.secondary {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.resume-modal-button.secondary:hover {
+  background-color: #e2e8f0;
+}
+
+/* Editable content styles */
+[contenteditable="true"] {
+  outline: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+[contenteditable="true"]:hover {
+  background-color: rgba(14, 165, 233, 0.05);
+}
+
+[contenteditable="true"]:focus {
+  background-color: rgba(14, 165, 233, 0.1);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+/* Save success message */
+.resume-save-success {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10B981;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease-out;
+  z-index: 1000000;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+/* Improve editable list items */
+.resume-experience li[contenteditable="true"] {
+  position: relative;
+  padding-left: 20px;
+}
+
+.resume-experience li[contenteditable="true"]::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #4a5568;
+}
+
+/* Prevent accidental edits to section headers */
+.resume-section h2 {
+  user-select: none;
+  cursor: default;
+}
+
+/* Add visual feedback for editable areas */
+.resume-content {
+  position: relative;
+}
+
+.resume-content::after {
+  content: "Click to edit";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: #718096;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resume-content:hover::after {
+  opacity: 1;
+}
+
+/* Action buttons container */
+.resume-action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Disabled button styles */
+.resume-modal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #e2e8f0;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.resume-modal-button:disabled:hover {
+  background-color: #e2e8f0;
+  transform: none;
+}
+
+/* Improve button hover states */
+.resume-modal-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resume-modal-button:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: none;
 } 

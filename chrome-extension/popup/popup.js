@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const jobDescriptionInput = document.getElementById('jobDescription');
   const generateBtn = document.getElementById('generateBtn');
   const resultDiv = document.getElementById('result');
@@ -6,21 +6,93 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyBtn = document.getElementById('copyBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const logoutBtn = document.getElementById('logoutBtn');
+  const loginForm = document.getElementById('loginForm');
+  const accountInfo = document.getElementById('accountInfo');
+  const loginBtn = document.getElementById('loginBtn');
+  const editProfileBtn = document.getElementById('editProfileBtn');
+  const forgotPasswordLink = document.getElementById('forgotPassword');
+  const registerLink = document.getElementById('register');
 
-  // Check authentication on load
-  chrome.runtime.sendMessage({ type: 'CHECK_AUTH' }, (response) => {
-    if (!response.isAuthenticated) {
-      window.location.href = 'login.html';
+  // Check if user is logged in
+  const token = await new Promise((resolve) => {
+    chrome.storage.local.get(['token'], (result) => {
+      resolve(result.token);
+    });
+  });
+
+  if (token) {
+    // Show account info
+    loginForm.style.display = 'none';
+    accountInfo.style.display = 'block';
+    
+    // Fetch user info
+    try {
+      const response = await fetch('http://localhost:3030/api/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        document.getElementById('userName').textContent = data.user.full_name;
+        document.getElementById('userEmail').textContent = data.user.email;
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+    }
+  }
+
+  // Login handler
+  loginBtn.addEventListener('click', async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+      const response = await fetch('http://localhost:3030/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        chrome.storage.local.set({ token: data.token }, () => {
+          window.location.reload();
+        });
+      } else {
+        alert('Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
     }
   });
 
-  // Handle logout
-  logoutBtn.addEventListener('mousedown', () => {
-    chrome.runtime.sendMessage({ type: 'LOGOUT' }, (response) => {
-      if (response.success) {
-        window.location.href = 'login.html';
-      }
+  // Logout handler
+  logoutBtn.addEventListener('click', () => {
+    chrome.storage.local.remove(['token'], () => {
+      window.location.reload();
     });
+  });
+
+  // Edit profile handler
+  editProfileBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'http://localhost:3000/profile' });
+  });
+
+  // Forgot password handler
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'http://localhost:3000/forgot-password' });
+  });
+
+  // Register handler
+  registerLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'http://localhost:3000/register' });
   });
 
   // Handle resume generation

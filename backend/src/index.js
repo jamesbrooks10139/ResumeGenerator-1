@@ -13,6 +13,10 @@ const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+const { promisify } = require('util');
+const libre = require('libreoffice-convert');
+const convertAsync = promisify(libre.convert);
 
 const app = express();
 const port = process.env.PORT || 3030;
@@ -30,6 +34,9 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Add multer for handling file uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper function to send password reset email
 const sendPasswordResetEmail = async (email, token) => {
@@ -489,8 +496,60 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
       education: generatedResume.education,
       certifications: generatedResume.certifications
     };
+
+    // Generate DOCX content
+    const templatePath = path.join(__dirname, 'templates', 'resume-template.docx');
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    const templateData = {
+      name: resumeData.name || '',
+      contact: `${resumeData.contact.email} | ${resumeData.contact.phonenumber} | ${resumeData.contact.linkedinURL} | ${resumeData.contact.github}`,
+      summary: resumeData.summary || '',
+      experience: resumeData.experience.map((exp, index) => ({
+        company: clearedText(exp.company) || '',
+        location: clearedText(exp.location) || '',
+        position: clearedText(exp.position) || '',
+        dates: clearedText(exp.dates) || '',
+        bullets: exp.bullets || []
+      })),
+      skills: resumeData.skills.map(skillSection => ({
+        section: skillSection.section,
+        list: skillSection.list
+      })),
+      education: resumeData.education.map(edu => ({
+        school: clearedText(edu.school) || '',
+        location: clearedText(edu.location) || '',
+        program: clearedText(edu.program) || '',
+        dates: clearedText(edu.dates) || ''
+      })),
+      certifications: resumeData.certifications.map(cert => ({
+        name: clearedText(cert.name) || '',
+        issued: clearedText(cert.issued) || ''
+      }))
+    };
+
+    // Render the document
+    doc.render(templateData);
+
+    // Generate the output
+    const buffer = doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE'
+    });
+
+    // Convert buffer to base64
+    const base64Content = buffer.toString('base64');
     
-    res.json({resume : resumeData, generatedResume})
+    res.json({
+      resume: resumeData,
+      generatedResume,
+      docxContent: base64Content
+    });
   } catch (error) {
     console.error('Error generating resume:', error);
     res.status(500).json({ error: 'Failed to generate resume' });
@@ -605,27 +664,40 @@ app.post('/api/download/:format', async (req, res) => {
       res.setHeader('Content-Disposition', 'attachment; filename=resume.pdf');
       doc.pipe(res);
 
-      // Add content to PDF
+      // Set default font
+      doc.font('Helvetica');
+
+      // Name (Header)
       doc.fontSize(24)
          .font('Helvetica-Bold')
-         .text(resumeData.name || '')
+         .text(resumeData.name || '', { align: 'center' })
          .moveDown(0.5);
 
-      doc.fontSize(12)
+      // Contact information
+      const contactInfo = [
+        resumeData.contact.email,
+        resumeData.contact.phonenumber,
+        resumeData.contact.linkedinURL,
+        resumeData.contact.github
+      ].filter(Boolean).join(' | ');
+
+      doc.fontSize(11)
          .font('Helvetica')
-         .text(resumeData.contact || '')
+         .text(contactInfo, { align: 'center' })
          .moveDown(1);
 
+      // Professional Summary
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Professional Summary')
          .moveDown(0.5);
 
-      doc.fontSize(12)
+      doc.fontSize(11)
          .font('Helvetica')
          .text(resumeData.summary || '')
          .moveDown(1);
 
+      // Professional Experience
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Professional Experience')
@@ -633,21 +705,27 @@ app.post('/api/download/:format', async (req, res) => {
 
       if (resumeData.experience && Array.isArray(resumeData.experience)) {
         resumeData.experience.forEach(exp => {
+          // Company and Location
           doc.fontSize(12)
              .font('Helvetica-Bold')
-             .text(exp.company || '')
+             .text(`${exp.company}, ${exp.location}`)
              .moveDown(0.5);
 
-          doc.fontSize(12)
+          // Position and Dates
+          doc.fontSize(11)
              .font('Helvetica')
-             .text(exp.position || '')
+             .text(`${exp.position} (${exp.dates})`)
              .moveDown(0.5);
 
+          // Bullet points
           if (exp.bullets && Array.isArray(exp.bullets)) {
             exp.bullets.forEach(bullet => {
-              doc.fontSize(12)
+              doc.fontSize(11)
                  .font('Helvetica')
-                 .text(`• ${bullet || ''}`)
+                 .text(`• ${bullet}`, {
+                   indent: 20,
+                   align: 'left'
+                 })
                  .moveDown(0.5);
             });
           }
@@ -656,36 +734,66 @@ app.post('/api/download/:format', async (req, res) => {
         });
       }
 
+      // Skills
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Skills & Other')
          .moveDown(0.5);
 
-      doc.fontSize(12)
-         .font('Helvetica')
-         .text(resumeData.skills || '')
-         .moveDown(1);
+      if (resumeData.skills && Array.isArray(resumeData.skills)) {
+        resumeData.skills.forEach(skillSection => {
+          doc.fontSize(12)
+             .font('Helvetica-Bold')
+             .text(skillSection.section)
+             .moveDown(0.5);
 
+          doc.fontSize(11)
+             .font('Helvetica')
+             .text(skillSection.list.join(', '))
+             .moveDown(0.5);
+        });
+      }
+
+      doc.moveDown(1);
+
+      // Education
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('Education')
          .moveDown(0.5);
 
-      doc.fontSize(12)
-         .font('Helvetica')
-         .text(resumeData.education || '')
-         .moveDown(1);
+      if (resumeData.education && Array.isArray(resumeData.education)) {
+        resumeData.education.forEach(edu => {
+          doc.fontSize(12)
+             .font('Helvetica-Bold')
+             .text(`${edu.school}, ${edu.location}`)
+             .moveDown(0.5);
 
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('Certifications')
-         .moveDown(0.5);
+          doc.fontSize(11)
+             .font('Helvetica')
+             .text(`${edu.program} (${edu.dates})`)
+             .moveDown(0.5);
+        });
+      }
 
-      if (resumeData.certifications && Array.isArray(resumeData.certifications)) {
+      doc.moveDown(1);
+
+      // Certifications
+      if (resumeData.certifications && Array.isArray(resumeData.certifications) && resumeData.certifications.length > 0) {
+        doc.fontSize(14)
+           .font('Helvetica-Bold')
+           .text('Certifications')
+           .moveDown(0.5);
+
         resumeData.certifications.forEach(cert => {
           doc.fontSize(12)
+             .font('Helvetica-Bold')
+             .text(cert.name)
+             .moveDown(0.5);
+
+          doc.fontSize(11)
              .font('Helvetica')
-             .text(cert.name || '')
+             .text(`Issued ${cert.issued}`)
              .moveDown(0.5);
         });
       }
@@ -697,6 +805,28 @@ app.post('/api/download/:format', async (req, res) => {
   } catch (error) {
     console.error('Download error:', error);
     res.status(500).json({ error: 'Failed to generate document' });
+  }
+});
+
+// Add new endpoint for DOCX to PDF conversion
+app.post('/api/convert-to-pdf', auth, upload.single('docx'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No DOCX file provided' });
+    }
+
+    // Convert DOCX to PDF using libreoffice-convert
+    const pdfBuffer = await convertAsync(req.file.buffer, '.pdf', undefined);
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=resume.pdf');
+
+    // Send the PDF
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error converting DOCX to PDF:', error);
+    res.status(500).json({ error: 'Failed to convert DOCX to PDF' });
   }
 });
 

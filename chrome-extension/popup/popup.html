@@ -2,32 +2,36 @@
 <html>
 <head>
   <title>Resume Generator</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>Resume Generator</h1>
-      <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+    <div id="loginForm" class="form-container">
+      <h2>Login</h2>
+      <div class="form-group">
+        <input type="email" id="email" placeholder="Email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" id="password" placeholder="Password" required>
+      </div>
+      <div class="form-group">
+        <button id="loginBtn">Login</button>
+      </div>
+      <div class="form-links">
+        <a href="#" id="forgotPassword">Forgot Password?</a>
+        <a href="#" id="register">Register</a>
+      </div>
     </div>
 
-    <div class="content">
-      <div class="form-group">
-        <label for="jobDescription">Job Description</label>
-        <textarea id="jobDescription" rows="6" placeholder="Paste the job description here..."></textarea>
+    <div id="accountInfo" class="account-container" style="display: none;">
+      <h2>Account</h2>
+      <div class="user-info">
+        <p>Welcome, <span id="userName">User</span></p>
+        <p>Email: <span id="userEmail">user@example.com</span></p>
       </div>
-
-      <div class="form-group">
-        <button id="generateBtn" class="btn btn-primary">Generate Resume</button>
-      </div>
-
-      <div id="result" class="result-container" style="display: none;">
-        <h2>Generated Resume</h2>
-        <div id="resumeContent" class="resume-content"></div>
-        <div class="button-group">
-          <button id="copyBtn" class="btn btn-secondary">Copy to Clipboard</button>
-          <button id="downloadBtn" class="btn btn-secondary">Download PDF</button>
-        </div>
+      <div class="account-actions">
+        <button id="editProfileBtn">Edit Profile</button>
+        <button id="logoutBtn">Logout</button>
       </div>
     </div>
   </div>

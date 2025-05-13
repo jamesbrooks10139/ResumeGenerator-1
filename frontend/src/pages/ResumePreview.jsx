@@ -5,7 +5,6 @@ import {
   Heading,
   Button,
   VStack,
-  Text,
   useToast,
   HStack,
   Icon,
@@ -13,9 +12,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { FaFilePdf, FaFileWord } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
+import { renderAsync } from 'docx-preview';
 
 function ResumePreview() {
-  const [resume, setResume] = useState('');
+  const [resume, setResume] = useState(null);
+  const [docxContent, setDocxContent] = useState(null);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -25,8 +26,55 @@ function ResumePreview() {
       navigate('/');
       return;
     }
-    setResume(savedResume);
+    const parsedResume = JSON.parse(savedResume);
+    setResume(parsedResume.resume);
+    setDocxContent(parsedResume.docxContent);
   }, [navigate]);
+
+  useEffect(() => {
+    if (docxContent) {
+      const container = document.getElementById('docx-container');
+      if (container) {
+        // Convert base64 to blob
+        const byteString = atob(docxContent);
+        const mimeString = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        
+        const blob = new Blob([ab], { type: mimeString });
+        
+        // Render the docx
+        renderAsync(blob, container, container, {
+          className: 'docx-wrapper',
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          ignoreFonts: false,
+          breakPages: true,
+          useBase64URL: true,
+          useMathMLPolyfill: true,
+          renderEndnotes: true,
+          renderFootnotes: true,
+          renderFooters: true,
+          renderHeaders: true,
+          title: 'Resume Preview',
+        }).catch(error => {
+          console.error('Error rendering docx:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to render document preview',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        });
+      }
+    }
+  }, [docxContent, toast]);
 
   const handleDownloadPDF = () => {
     try {
@@ -64,25 +112,43 @@ function ResumePreview() {
   };
 
   const handleDownloadDOCX = () => {
-    // For DOCX, we'll create a simple text file for now
-    // In a production environment, you'd want to use a proper DOCX library
-    const blob = new Blob([resume], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'resume.docx';
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    try {
+      // Convert base64 to blob
+      const byteString = atob(docxContent);
+      const mimeString = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume.docx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
-    toast({
-      title: 'Success',
-      description: 'Resume downloaded as DOCX',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
+      toast({
+        title: 'Success',
+        description: 'Resume downloaded as DOCX',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download DOCX',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   return (
@@ -100,9 +166,10 @@ function ResumePreview() {
           borderRadius="lg"
           bg="white"
           boxShadow="md"
-          whiteSpace="pre-wrap"
+          height="800px"
+          overflow="auto"
         >
-          <Text>{resume}</Text>
+          <div id="docx-container" style={{ width: '100%', height: '100%' }} />
         </Box>
 
         <HStack spacing={4} justify="center">

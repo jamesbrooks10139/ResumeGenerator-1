@@ -1,6 +1,17 @@
 // Create and inject the generate button
 let currentResumeData = null; // Global variable to store resume data
 
+// Add undo/redo history
+let editHistory = [];
+let currentHistoryIndex = -1;
+
+function addToHistory(resumeData) {
+  // Remove any future history if we're not at the end
+  editHistory = editHistory.slice(0, currentHistoryIndex + 1);
+  editHistory.push(JSON.parse(JSON.stringify(resumeData))); // Deep copy
+  currentHistoryIndex = editHistory.length - 1;
+}
+
 function createGenerateButton() {
   const button = document.createElement('button');
   button.id = 'resume-generator-button';
@@ -10,249 +21,474 @@ function createGenerateButton() {
 }
 
 // Create and inject modal
-function createModal(jobDescription) {
-  // Remove existing modal if any
-  const existingModal = document.querySelector('.resume-modal-overlay');
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  const modalHTML = `
-    <div class="resume-modal-overlay">
-      <div class="resume-modal">
-        <div class="resume-modal-header">
-          <h2 class="resume-modal-title">Resume Generator</h2>
-          <button class="resume-modal-close">&times;</button>
+function createModal(selectedText = '') {
+  const modal = document.createElement('div');
+  modal.className = 'resume-modal-overlay';
+  modal.innerHTML = `
+    <div class="resume-modal">
+      <div class="resume-modal-header">
+        <h2 class="resume-modal-title">Resume Generator</h2>
+        <button class="resume-modal-close">&times;</button>
+      </div>
+      <div class="resume-modal-content">
+        <div class="resume-modal-job-description" contenteditable="true" placeholder="Enter job description here..."></div>
+        <div class="resume-modal-docx-preview">
+          <div class="docx-wrapper"></div>
         </div>
-        <div class="resume-modal-content">
-          <div class="resume-modal-job-description">${jobDescription}</div>
-          <div class="resume-modal-actions">
-            <button class="resume-modal-button secondary" id="cancelBtn">Cancel</button>
-            <button class="resume-modal-button primary" id="generateBtn">Generate Resume</button>
-          </div>
-        </div>
-        <div id="loading" class="resume-modal-loading hidden">
-          <div class="resume-modal-spinner"></div>
-          <p>Generating your resume...</p>
-        </div>
-        <div id="result" class="resume-modal-result hidden"></div>
-        <div id="download" class="resume-modal-download hidden">
-          <button id="downloadPdf">Download PDF</button>
-          <button id="downloadDocx">Download DOCX</button>
-        </div>
+      </div>
+      <div class="resume-modal-download">
+        <button class="generate">Generate Resume</button>
+        <button class="save">Save Changes</button>
+        <button class="undo" disabled>Undo</button>
+        <button class="redo" disabled>Redo</button>
+        <button class="download-pdf">Download PDF</button>
+        <button class="download-docx">Download DOCX</button>
       </div>
     </div>
   `;
 
-  // Create and inject modal
-  const modalElement = document.createElement('div');
-  modalElement.innerHTML = modalHTML;
-  document.body.appendChild(modalElement.firstElementChild);
-  
-  // Get modal elements
-  const modal = document.querySelector('.resume-modal-overlay');
+  // Add event listeners
   const closeBtn = modal.querySelector('.resume-modal-close');
-  const cancelBtn = modal.querySelector('#cancelBtn');
-  const generateBtn = modal.querySelector('#generateBtn');
-  const loadingDiv = modal.querySelector('#loading');
-  const resultDiv = modal.querySelector('#result');
-  const downloadDiv = modal.querySelector('#download');
-  const downloadPdfBtn = modal.querySelector('#downloadPdf');
-  const downloadDocxBtn = modal.querySelector('#downloadDocx');
-
-  // Handle modal close
-  const closeModal = () => {
+  closeBtn.addEventListener('click', () => {
     modal.remove();
-    document.body.style.overflow = '';
-  };
-
-  // Event listeners
-  closeBtn.addEventListener('mousedown', closeModal);
-  cancelBtn.addEventListener('mousedown', closeModal);
-  modal.addEventListener('mousedown', (e) => {
-    if (e.target === modal) closeModal();
   });
 
-  // Prevent modal from closing when clicking inside
-  modal.querySelector('.resume-modal').addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-  });
+  // Set the formatted content after the modal is created
+  const jobDescriptionDiv = modal.querySelector('.resume-modal-job-description');
+  if (selectedText) {
+    jobDescriptionDiv.innerHTML = selectedText;
+  }
 
-  // Handle generate button
-  generateBtn.addEventListener('mousedown', async () => {
-    loadingDiv.classList.remove('hidden');
-    generateBtn.disabled = true;
+  const generateBtn = modal.querySelector('.generate');
+  generateBtn.addEventListener('click', async () => {
+    const jobDescription = modal.querySelector('.resume-modal-job-description').textContent;
+    if (!jobDescription.trim()) {
+      alert('Please enter a job description');
+      return;
+    }
 
     try {
-      const authResponse = await chrome.runtime.sendMessage({ type: 'CHECK_AUTH' });
-      if (!authResponse.isAuthenticated) {
-        alert('Please log in to generate a resume');
-        closeModal();
-        return;
-      }
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
 
-      const response = await chrome.runtime.sendMessage({
-        type: 'API_REQUEST',
-        url: 'http://localhost:3030/api/generate-resume',
-        method: 'POST',
-        body: { jobDescription }
+      // Get the token from chrome.storage.local
+      const token = await new Promise((resolve) => {
+        chrome.storage.local.get(['token'], (result) => {
+          resolve(result.token);
+        });
       });
 
-      if (response.success) {
-        currentResumeData = response.data.resume; // Store the resume data globally
-        
-        // Format the resume data into a readable string for display
-        let formattedResume = `${currentResumeData.name}\n`;
-        
-        // Format contact information
-        const contact = currentResumeData.contact;
-        formattedResume += `${contact.email} | ${contact.phonenumber} | ${contact.linkedinURL} | ${contact.github}\n\n`;
-
-        // Add summary
-        if (currentResumeData.summary) {
-          formattedResume += `PROFESSIONAL SUMMARY\n${currentResumeData.summary}\n\n`;
-        }
-
-        // Add experience
-        formattedResume += 'PROFESSIONAL EXPERIENCE\n';
-        currentResumeData.experience.forEach(exp => {
-          formattedResume += `${exp.company}, ${exp.location}\n`;
-          formattedResume += `${exp.position} (${exp.dates})\n`;
-          exp.bullets.forEach(bullet => {
-            formattedResume += `● ${bullet}\n`;
-          });
-          formattedResume += '\n';
-        });
-
-        // Add skills
-        formattedResume += 'SKILLS & OTHER\n';
-        currentResumeData.skills.forEach(skillSection => {
-          formattedResume += `${skillSection.section}:\n`;
-          formattedResume += `${skillSection.list.join(', ')}\n\n`;
-        });
-
-        // Add education
-        formattedResume += 'EDUCATION\n';
-        currentResumeData.education.forEach(edu => {
-          formattedResume += `${edu.school}, ${edu.location}\n`;
-          formattedResume += `${edu.program} (${edu.dates})\n\n`;
-        });
-
-        // Add certifications
-        if (currentResumeData.certifications && currentResumeData.certifications.length > 0) {
-          formattedResume += 'CERTIFICATIONS\n';
-          currentResumeData.certifications.forEach(cert => {
-            formattedResume += `${cert.name}    Issued ${cert.issued}\n`;
-          });
-        }
-
-        resultDiv.textContent = formattedResume;
-        resultDiv.classList.remove('hidden');
-        downloadDiv.classList.remove('hidden');
-      } else {
-        throw new Error(response.error);
+      if (!token) {
+        throw new Error('Please log in to generate a resume');
       }
+      
+      const response = await fetch('http://localhost:3030/api/generate-resume', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ jobDescription })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please log in again.');
+        }
+        throw new Error('Failed to generate resume');
+      }
+
+      const data = await response.json();
+      currentResumeData = data.resume;
+      
+      // Initialize history with the generated resume
+      editHistory = [JSON.parse(JSON.stringify(currentResumeData))];
+      currentHistoryIndex = 0;
+      
+      // Update undo/redo buttons
+      const undoBtn = modal.querySelector('.undo');
+      const redoBtn = modal.querySelector('.redo');
+      undoBtn.disabled = true;
+      redoBtn.disabled = true;
+
+      // Display the resume
+      const docxWrapper = modal.querySelector('.docx-wrapper');
+      docxWrapper.innerHTML = formatResumeContent(currentResumeData);
     } catch (error) {
-      alert(error.message || 'Failed to generate resume');
+      console.error('Error generating resume:', error);
+      alert(error.message || 'Failed to generate resume. Please try again.');
     } finally {
-      loadingDiv.classList.add('hidden');
       generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate Resume';
     }
   });
 
-  // Handle download buttons
-  downloadPdfBtn.addEventListener('mousedown', async () => {
+  // Save Changes button
+  const saveBtn = modal.querySelector('.save');
+  saveBtn.addEventListener('click', async () => {
+    try {
+      const resumeContent = modal.querySelector('.resume-content');
+      if (!resumeContent) {
+        throw new Error('Resume content not found');
+      }
+
+      // Update the currentResumeData with edited content
+      const updatedResume = {
+        ...currentResumeData,
+        name: resumeContent.querySelector('.resume-header h1')?.textContent?.trim() || currentResumeData.name,
+        contact: {
+          ...currentResumeData.contact,
+          email: resumeContent.querySelector('.resume-contact')?.textContent?.split('|')[0]?.trim() || currentResumeData.contact.email,
+          phonenumber: resumeContent.querySelector('.resume-contact')?.textContent?.split('|')[1]?.trim() || currentResumeData.contact.phonenumber,
+          linkedinURL: resumeContent.querySelector('.resume-contact')?.textContent?.split('|')[2]?.trim() || currentResumeData.contact.linkedinURL,
+          github: resumeContent.querySelector('.resume-contact')?.textContent?.split('|')[3]?.trim() || currentResumeData.contact.github
+        },
+        summary: resumeContent.querySelector('.resume-section p')?.textContent?.trim() || currentResumeData.summary,
+        experience: Array.from(resumeContent.querySelectorAll('.resume-experience')).map(exp => ({
+          company: exp.querySelector('h3')?.textContent?.split(',')[0]?.trim() || '',
+          location: exp.querySelector('h3')?.textContent?.split(',')[1]?.trim() || '',
+          position: exp.querySelector('.resume-position')?.textContent?.split('(')[0]?.trim() || '',
+          dates: exp.querySelector('.resume-position')?.textContent?.match(/\((.*?)\)/)?.[1]?.trim() || '',
+          bullets: Array.from(exp.querySelectorAll('li')).map(li => li.textContent.trim())
+        })),
+        skills: Array.from(resumeContent.querySelectorAll('.resume-skills')).map(skill => ({
+          section: skill.querySelector('h3')?.textContent?.trim() || '',
+          list: skill.querySelector('p')?.textContent?.split(',').map(s => s.trim()) || []
+        })),
+        education: Array.from(resumeContent.querySelectorAll('.resume-education')).map(edu => ({
+          school: edu.querySelector('h3')?.textContent?.split(',')[0]?.trim() || '',
+          location: edu.querySelector('h3')?.textContent?.split(',')[1]?.trim() || '',
+          program: edu.querySelector('.resume-program')?.textContent?.split('(')[0]?.trim() || '',
+          dates: edu.querySelector('.resume-program')?.textContent?.match(/\((.*?)\)/)?.[1]?.trim() || ''
+        })),
+        certifications: Array.from(resumeContent.querySelectorAll('.resume-certification')).map(cert => ({
+          name: cert.querySelector('h3')?.textContent?.trim() || '',
+          issued: cert.querySelector('.resume-issued')?.textContent?.replace('Issued ', '')?.trim() || ''
+        }))
+      };
+
+      // Add to history
+      addToHistory(updatedResume);
+      currentResumeData = updatedResume;
+
+      // Update undo/redo buttons
+      const undoBtn = modal.querySelector('.undo');
+      const redoBtn = modal.querySelector('.redo');
+      undoBtn.disabled = currentHistoryIndex <= 0;
+      redoBtn.disabled = currentHistoryIndex >= editHistory.length - 1;
+
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'save-success';
+      successMessage.textContent = 'Changes saved successfully!';
+      document.body.appendChild(successMessage);
+      setTimeout(() => successMessage.remove(), 3000);
+
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Failed to save changes: ' + error.message);
+    }
+  });
+
+  // Undo button
+  const undoBtn = modal.querySelector('.undo');
+  undoBtn.addEventListener('click', () => {
+    if (currentHistoryIndex > 0) {
+      currentHistoryIndex--;
+      const previousState = editHistory[currentHistoryIndex];
+      currentResumeData = previousState;
+      const docxWrapper = modal.querySelector('.docx-wrapper');
+      docxWrapper.innerHTML = formatResumeContent(previousState);
+      
+      // Update button states
+      undoBtn.disabled = currentHistoryIndex <= 0;
+      redoBtn.disabled = currentHistoryIndex >= editHistory.length - 1;
+    }
+  });
+
+  // Redo button
+  const redoBtn = modal.querySelector('.redo');
+  redoBtn.addEventListener('click', () => {
+    if (currentHistoryIndex < editHistory.length - 1) {
+      currentHistoryIndex++;
+      const nextState = editHistory[currentHistoryIndex];
+      currentResumeData = nextState;
+      const docxWrapper = modal.querySelector('.docx-wrapper');
+      docxWrapper.innerHTML = formatResumeContent(nextState);
+      
+      // Update button states
+      undoBtn.disabled = currentHistoryIndex <= 0;
+      redoBtn.disabled = currentHistoryIndex >= editHistory.length - 1;
+    }
+  });
+
+  // Download PDF button
+  const downloadPdfBtn = modal.querySelector('.download-pdf');
+  downloadPdfBtn.addEventListener('click', async () => {
     try {
       if (!currentResumeData) {
         throw new Error('No resume data available');
       }
 
-      const response = await chrome.runtime.sendMessage({
-        type: 'API_REQUEST',
-        url: 'http://localhost:3030/api/download/pdf',
-        method: 'POST',
-        body: { resume: currentResumeData },
-        responseType: 'blob'
+      const token = await new Promise((resolve) => {
+        chrome.storage.local.get(['token'], (result) => {
+          resolve(result.token);
+        });
       });
 
-      if (response.success) {
-        // Convert base64 to blob
-        const byteString = atob(response.data.split(',')[1]);
-        const mimeString = response.type;
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        
-        const blob = new Blob([ab], { type: mimeString });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'resume.pdf';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        throw new Error(response.error);
+      if (!token) {
+        throw new Error('Please log in to download the resume');
       }
+
+      // Show loading state
+      downloadPdfBtn.disabled = true;
+      downloadPdfBtn.textContent = 'Generating PDF...';
+
+      // First, generate the DOCX file using the template
+      const docxResponse = await fetch('http://localhost:3030/api/download/docx', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ resume: currentResumeData })
+      });
+
+      if (!docxResponse.ok) {
+        throw new Error('Failed to generate DOCX file');
+      }
+
+      const docxBlob = await docxResponse.blob();
+
+      // Create form data to send the DOCX file for PDF conversion
+      const formData = new FormData();
+      formData.append('docx', docxBlob, 'resume.docx');
+
+      // Convert DOCX to PDF
+      const pdfResponse = await fetch('http://localhost:3030/api/convert-to-pdf', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!pdfResponse.ok) {
+        throw new Error('Failed to convert to PDF');
+      }
+
+      const pdfBlob = await pdfResponse.blob();
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'download-success';
+      successMessage.textContent = 'PDF downloaded successfully!';
+      document.body.appendChild(successMessage);
+      setTimeout(() => successMessage.remove(), 3000);
+
     } catch (error) {
+      console.error('Error downloading PDF:', error);
       alert('Failed to download PDF: ' + error.message);
+    } finally {
+      // Reset button state
+      downloadPdfBtn.disabled = false;
+      downloadPdfBtn.textContent = 'Download PDF';
     }
   });
 
-  downloadDocxBtn.addEventListener('mousedown', async () => {
+  // Download DOCX button
+  const downloadDocxBtn = modal.querySelector('.download-docx');
+  downloadDocxBtn.addEventListener('click', async () => {
     try {
       if (!currentResumeData) {
         throw new Error('No resume data available');
       }
 
-      const response = await chrome.runtime.sendMessage({
-        type: 'API_REQUEST',
-        url: 'http://localhost:3030/api/download/docx',
-        method: 'POST',
-        body: { resume: currentResumeData },
-        responseType: 'blob'
+      const token = await new Promise((resolve) => {
+        chrome.storage.local.get(['token'], (result) => {
+          resolve(result.token);
+        });
       });
 
-      if (response.success) {
-        // Convert base64 to blob
-        const byteString = atob(response.data.split(',')[1]);
-        const mimeString = response.type;
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        
-        const blob = new Blob([ab], { type: mimeString });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'resume.docx';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        throw new Error(response.error);
+      if (!token) {
+        throw new Error('Please log in to download the resume');
       }
+
+      const response = await fetch('http://localhost:3030/api/download/docx', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ resume: currentResumeData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download DOCX');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume.docx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
+      console.error('Error downloading DOCX:', error);
       alert('Failed to download DOCX: ' + error.message);
     }
   });
 
-  // Prevent body scrolling when modal is open
-  document.body.style.overflow = 'hidden';
+  // Handle text selection
+  function handleTextSelection() {
+    const selection = window.getSelection();
+    
+    // Get the selected HTML content
+    let selectedHTML = '';
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const fragment = range.cloneContents();
+      const tempDiv = document.createElement('div');
+      tempDiv.appendChild(fragment);
+      selectedHTML = tempDiv.innerHTML;
+    }
+    
+    const selectedText = selection.toString().trim();
+
+    // Remove existing button if any
+    const existingButton = document.getElementById('resume-generator-button');
+    if (existingButton) {
+      existingButton.remove();
+    }
+
+    if (selectedText) {
+      const button = createGenerateButton();
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Position the button near the selection
+      button.style.left = `${rect.left + window.scrollX}px`;
+      button.style.top = `${rect.bottom + 10}px`;
+
+      button.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        createModal(selectedHTML || selectedText);
+      });
+
+      document.body.appendChild(button);
+    }
+  }
+
+  // Add event listeners
+  document.addEventListener('mouseup', handleTextSelection);
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'Escape') {
+      const button = document.getElementById('resume-generator-button');
+      if (button) button.remove();
+      const modal = document.querySelector('.resume-modal-overlay');
+      if (modal) modal.remove();
+    }
+  });
+
+  // Listen for messages from the extension
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'SHOW_MODAL') {
+      createModal(request.jobDescription || '');
+      sendResponse({ success: true });
+    }
+  });
+
+  // Helper function to format resume content
+  function formatResumeContent(resume) {
+    let html = `
+      <div class="resume-content" contenteditable="true">
+        <div class="resume-header">
+          <h1 contenteditable="true">${resume.name}</h1>
+          <div class="resume-contact" contenteditable="true">
+            ${resume.contact.email} | ${resume.contact.phonenumber} | ${resume.contact.linkedinURL} | ${resume.contact.github}
+          </div>
+        </div>
+
+        <div class="resume-section">
+          <h2>Professional Summary</h2>
+          <p contenteditable="true">${resume.summary}</p>
+        </div>
+
+        <div class="resume-section">
+          <h2>Professional Experience</h2>
+          ${resume.experience.map(exp => `
+            <div class="resume-experience">
+              <h3 contenteditable="true">${exp.company}, ${exp.location}</h3>
+              <div class="resume-position" contenteditable="true">${exp.position} (${exp.dates})</div>
+                ${exp.bullets.map(bullet => `<li contenteditable="true">${bullet}</li>`).join('')}
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="resume-section">
+          <h2>Skills & Other</h2>
+          ${resume.skills.map(skillSection => `
+            <div class="resume-skills">
+              <h3 contenteditable="true">${skillSection.section}</h3>
+              <p contenteditable="true">${skillSection.list.join(', ')}</p>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="resume-section">
+          <h2>Education</h2>
+          ${resume.education.map(edu => `
+            <div class="resume-education">
+              <h3 contenteditable="true">${edu.school}, ${edu.location}</h3>
+              <div class="resume-program" contenteditable="true">${edu.program} (${edu.dates})</div>
+            </div>
+          `).join('')}
+        </div>
+
+        ${resume.certifications && resume.certifications.length > 0 ? `
+          <div class="resume-section">
+            <h2>Certifications</h2>
+            ${resume.certifications.map(cert => `
+              <div class="resume-certification">
+                <h3 contenteditable="true">${cert.name}</h3>
+                <div class="resume-issued" contenteditable="true">Issued ${cert.issued}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+    return html;
+  }
+
+  document.body.appendChild(modal);
 }
 
 // Handle text selection
 function handleTextSelection() {
-  console.log('handleTextSelection');
   const selection = window.getSelection();
+  
+  // Get the selected HTML content
+  let selectedHTML = '';
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const fragment = range.cloneContents();
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(fragment);
+    selectedHTML = tempDiv.innerHTML;
+  }
+  
   const selectedText = selection.toString().trim();
 
   // Remove existing button if any
@@ -272,7 +508,7 @@ function handleTextSelection() {
 
     button.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      createModal(selectedText);
+      createModal(selectedHTML || selectedText);
     });
 
     document.body.appendChild(button);
@@ -293,7 +529,72 @@ document.addEventListener('keyup', (event) => {
 // Listen for messages from the extension
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'SHOW_MODAL') {
-    createModal(request.jobDescription);
+    createModal(request.jobDescription || '');
     sendResponse({ success: true });
   }
-}); 
+});
+
+// Helper function to format resume content
+function formatResumeContent(resume) {
+  let html = `
+    <div class="resume-content" contenteditable="true">
+      <div class="resume-header">
+        <h1 contenteditable="true">${resume.name}</h1>
+        <div class="resume-contact" contenteditable="true">
+          ${resume.contact.email} | ${resume.contact.phonenumber} | ${resume.contact.linkedinURL} | ${resume.contact.github}
+        </div>
+      </div>
+
+      <div class="resume-section">
+        <h2>Professional Summary</h2>
+        <p contenteditable="true">${resume.summary}</p>
+      </div>
+
+      <div class="resume-section">
+        <h2>Professional Experience</h2>
+        ${resume.experience.map(exp => `
+          <div class="resume-experience">
+            <h3 contenteditable="true">${exp.company}, ${exp.location}</h3>
+            <div class="resume-position" contenteditable="true">${exp.position} (${exp.dates})</div>
+            <ul>
+              ${exp.bullets.map(bullet => `<li contenteditable="true">${bullet}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="resume-section">
+        <h2>Skills & Other</h2>
+        ${resume.skills.map(skillSection => `
+          <div class="resume-skills">
+            <h3 contenteditable="true">${skillSection.section}</h3>
+            <p contenteditable="true">${skillSection.list.join(', ')}</p>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="resume-section">
+        <h2>Education</h2>
+        ${resume.education.map(edu => `
+          <div class="resume-education">
+            <h3 contenteditable="true">${edu.school}, ${edu.location}</h3>
+            <div class="resume-program" contenteditable="true">${edu.program} (${edu.dates})</div>
+          </div>
+        `).join('')}
+      </div>
+
+      ${resume.certifications && resume.certifications.length > 0 ? `
+        <div class="resume-section">
+          <h2>Certifications</h2>
+          ${resume.certifications.map(cert => `
+            <div class="resume-certification">
+              <h3 contenteditable="true">${cert.name}</h3>
+              <div class="resume-issued" contenteditable="true">Issued ${cert.issued}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+  return html;
+}
