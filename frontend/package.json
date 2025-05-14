@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Frontend for Resume Generator",
   "scripts": {
-    "start": "npx react-scripts start",
-    "build": "npx react-scripts build",
-    "dev": "npx react-scripts start",
-    "test": "npx react-scripts test",
-    "eject": "npx react-scripts eject"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "dev": "react-scripts start",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
   "dependencies": {
     "@emotion/react": "^11.11.3",

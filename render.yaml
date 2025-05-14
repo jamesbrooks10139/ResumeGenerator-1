@@ -30,6 +30,7 @@ services:
     plan: free
     buildCommand: |
       cd frontend
+      npm install react@18.2.0 react-dom@18.2.0 --save
       npm install
       npx react-scripts build
     startCommand: cd frontend && npx react-scripts start
