@@ -31,9 +31,8 @@ services:
     buildCommand: |
       cd frontend
       npm install
-      npm install react-scripts
-      npm run build
-    startCommand: cd frontend && npm start
+      npx react-scripts build
+    startCommand: cd frontend && npx react-scripts start
     envVars:
       - key: NODE_ENV
         value: production
