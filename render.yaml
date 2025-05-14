@@ -1,11 +1,18 @@
 services:
-  # Backend Service
+  # Combined Frontend and Backend Service
   - type: web
-    name: resume-generator-backend
+    name: resume-generator
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install
+    buildCommand: |
+      npm install
+      cd frontend
+      npm install react@18.2.0 react-dom@18.2.0 --save
+      npm install
+      npm run build
+      cd ../backend
+      npm install
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -19,28 +26,5 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: FRONTEND_URL
-        value: https://resume-generator-frontend.onrender.com
-    nodeVersion: 18.20.2
-
-  # Frontend Service
-  - type: web
-    name: resume-generator-frontend
-    env: node
-    region: oregon
-    plan: free
-    buildCommand: |
-      cd frontend
-      npm install react@18.2.0 react-dom@18.2.0 --save
-      npm install
-      npx react-scripts build
-    startCommand: cd frontend && npx react-scripts start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3000
-      - key: REACT_APP_BACKEND_URL
-        value: https://resume-generator-backend.onrender.com
-      - key: REACT_APP_FRONTEND_URL
-        value: https://resume-generator-frontend.onrender.com
+        value: https://resume-generator.onrender.com
     nodeVersion: 18.20.2 

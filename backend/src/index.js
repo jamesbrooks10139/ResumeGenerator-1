@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const OpenAI = require('openai');
+const { OpenAI } = require('openai');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 const auth = require('./middleware/auth');
@@ -15,8 +15,8 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { promisify } = require('util');
-const libre = require('libreoffice-convert');
-const convertAsync = promisify(libre.convert);
+const libreofficeConvert = require('libreoffice-convert');
+const convertAsync = promisify(libreofficeConvert.convert);
 
 const app = express();
 const port = process.env.PORT || 3030;
@@ -31,10 +31,16 @@ const openai = new OpenAI({
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Serve static files from the React build directory
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
 
 // Add multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -834,6 +840,17 @@ app.post('/api/convert-to-pdf', auth, upload.single('docx'), async (req, res) =>
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
 });
 
 // Start server
