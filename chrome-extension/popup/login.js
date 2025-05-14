@@ -1,4 +1,4 @@
-const backendUrl = 'https://162.218.114.85:3030/api/auth';
+const backendUrl = 'http://162.218.114.85:3030/api/auth';
 
 document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');

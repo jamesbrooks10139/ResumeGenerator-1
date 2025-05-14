@@ -17,17 +17,10 @@ const multer = require('multer');
 const { promisify } = require('util');
 const libreofficeConvert = require('libreoffice-convert');
 const convertAsync = promisify(libreofficeConvert.convert);
-const https = require('https');
 
 const app = express();
 const port = process.env.PORT || 3030;
 const host = process.env.HOST || '0.0.0.0';
-
-// SSL Configuration
-const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, '../ssl/private.key')),
-  cert: fs.readFileSync(path.join(__dirname, '../ssl/certificate.crt'))
-};
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -860,7 +853,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Create HTTPS server
-https.createServer(sslOptions, app).listen(port, host, () => {
-  console.log(`HTTPS server is running on https://${host}:${port}`);
+// Start HTTP server
+app.listen(port, host, () => {
+  console.log(`HTTP server is running on http://${host}:${port}`);
 }); 

@@ -8,7 +8,7 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://162.218.114.85:3030/*"
+    "http://162.218.114.85:3030/*"
   ],
   "action": {
     "default_popup": "popup/popup.html"
