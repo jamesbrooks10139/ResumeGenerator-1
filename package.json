@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Resume Generator with Chrome Extension",
   "main": "index.js",
+  "engines": {
+    "node": "18.20.2"
+  },
   "scripts": {
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:backend": "cd backend && npm start",
