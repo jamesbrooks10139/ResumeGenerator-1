@@ -1,3 +1,5 @@
+const backendUrl = 'http://localhost:3030/api';
+
 document.addEventListener('DOMContentLoaded', async () => {
   const jobDescriptionInput = document.getElementById('jobDescription');
   const generateBtn = document.getElementById('generateBtn');
@@ -27,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Fetch user info
     try {
-      const response = await fetch('http://localhost:3030/api/profile', {
+      const response = await fetch(`${backendUrl}/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const password = document.getElementById('password').value;
 
     try {
-      const response = await fetch('http://localhost:3030/api/auth/login', {
+      const response = await fetch(`${backendUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -80,19 +82,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Edit profile handler
   editProfileBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: 'http://localhost:3000/profile' });
+    chrome.tabs.create({ url: `${backendUrl}/profile` });
   });
 
   // Forgot password handler
   forgotPasswordLink.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'http://localhost:3000/forgot-password' });
+    chrome.tabs.create({ url: `${backendUrl}/forgot-password` });
   });
 
   // Register handler
   registerLink.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'http://localhost:3000/register' });
+    chrome.tabs.create({ url: `${backendUrl}/register` });
   });
 
   // Handle resume generation
@@ -110,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const response = await chrome.runtime.sendMessage({
         type: 'API_REQUEST',
-        url: 'http://localhost:3030/api/generate-resume',
+        url: `${backendUrl}/generate-resume`,
         method: 'POST',
         body: { jobDescription }
       });

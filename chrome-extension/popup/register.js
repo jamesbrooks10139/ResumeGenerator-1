@@ -1,3 +1,5 @@
+const backendUrl = 'http://localhost:3030/api/auth';
+
 document.addEventListener('DOMContentLoaded', () => {
   const registerForm = document.getElementById('registerForm');
 
@@ -22,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3030/api/auth/register', {
+      const response = await fetch(`${backendUrl}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,3 +1,5 @@
+const backendUrl = 'http://localhost:3030/api/auth';
+
 document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');
   const emailInput = document.getElementById('email');
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rememberMe = rememberMeCheckbox.checked;
 
     try {
-      const response = await fetch('http://localhost:3030/api/auth/login', {
+      const response = await fetch(`${backendUrl}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

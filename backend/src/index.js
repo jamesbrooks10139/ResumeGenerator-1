@@ -20,6 +20,7 @@ const convertAsync = promisify(libre.convert);
 
 const app = express();
 const port = process.env.PORT || 3030;
+const host = process.env.HOST || '0.0.0.0';
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -836,6 +837,6 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(port, host, () => {
+  console.log(`Server is running on http://${host}:${port}`);
 }); 

@@ -1,3 +1,5 @@
+const backendUrl = 'http://localhost:3030/api';
+
 // Listen for installation
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
@@ -20,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (result.token) {
         // Check if token is still valid
         try {
-          const response = await fetch('http://localhost:3030/api/auth/verify', {
+          const response = await fetch(`${backendUrl}/auth/verify`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${result.token}`
@@ -128,7 +130,7 @@ setInterval(async () => {
   chrome.storage.local.get(['token', 'lastAuthCheck'], async (result) => {
     if (result.token) {
       try {
-        const response = await fetch('http://localhost:3030/api/auth/verify', {
+        const response = await fetch(`${backendUrl}/auth/verify`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${result.token}`

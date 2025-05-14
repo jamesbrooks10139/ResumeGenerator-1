@@ -1,4 +1,5 @@
-// Create and inject the generate button
+const backendUrl = 'http://localhost:3030/api';
+
 let currentResumeData = null; // Global variable to store resume data
 
 // Add undo/redo history
@@ -82,7 +83,7 @@ function createModal(selectedText = '') {
         throw new Error('Please log in to generate a resume');
       }
       
-      const response = await fetch('http://localhost:3030/api/generate-resume', {
+      const response = await fetch(`${backendUrl}/generate-resume`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,7 +246,7 @@ function createModal(selectedText = '') {
       downloadPdfBtn.textContent = 'Generating PDF...';
 
       // First, generate the DOCX file using the template
-      const docxResponse = await fetch('http://localhost:3030/api/download/docx', {
+      const docxResponse = await fetch(`${backendUrl}/download/docx`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -265,7 +266,7 @@ function createModal(selectedText = '') {
       formData.append('docx', docxBlob, 'resume.docx');
 
       // Convert DOCX to PDF
-      const pdfResponse = await fetch('http://localhost:3030/api/convert-to-pdf', {
+      const pdfResponse = await fetch(`${backendUrl}/convert-to-pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -322,7 +323,7 @@ function createModal(selectedText = '') {
         throw new Error('Please log in to download the resume');
       }
 
-      const response = await fetch('http://localhost:3030/api/download/docx', {
+      const response = await fetch(`${backendUrl}/download/docx`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
