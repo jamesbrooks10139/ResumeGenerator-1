@@ -1,4 +1,4 @@
-const backendUrl = 'http://localhost:3030/api/auth';
+const backendUrl = 'https://162.218.114.85:3030/api/auth';
 
 document.addEventListener('DOMContentLoaded', () => {
   const registerForm = document.getElementById('registerForm');

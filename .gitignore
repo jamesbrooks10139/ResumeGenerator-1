@@ -63,4 +63,10 @@ frontend/.cache/
 *.tgz
 
 # Yarn Integrity file
-.yarn-integrity 
+.yarn-integrity
+
+# SSL Certificates
+backend/ssl/*.key
+backend/ssl/*.crt
+backend/ssl/*.csr
+backend/ssl/*.pem 
