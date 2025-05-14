@@ -1,0 +1,42 @@
+services:
+  # Backend Service
+  - type: web
+    name: resume-generator-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3030
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://resume-generator-frontend.onrender.com
+    nodeVersion: 18.20.2
+
+  # Frontend Service
+  - type: web
+    name: resume-generator-frontend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: REACT_APP_BACKEND_URL
+        value: https://resume-generator-backend.onrender.com
+      - key: REACT_APP_FRONTEND_URL
+        value: https://resume-generator-frontend.onrender.com
+    nodeVersion: 18.20.2 
