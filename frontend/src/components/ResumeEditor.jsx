@@ -14,6 +14,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { useNavigate } from 'react-router-dom';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { renderAsync } from 'docx-preview';
+import html2pdf from 'html2pdf.js';
 
 const ResumeEditor = () => {
   const navigate = useNavigate();
@@ -238,127 +239,152 @@ const ResumeEditor = () => {
     }
   };
 
-  const handleDownloadDOCX = async () => {
+  const handleDownloadPDF = () => {
     try {
-      if (!editedResume) {
-        setError('No resume data available to download');
+      if (!containerRef.current) {
+        setError('No content available to download');
         return;
       }
 
-      // Create a new document
-      const doc = new Document({
-        sections: [{
-          properties: {},
-          children: [
-            // Header
-            new Paragraph({
-              text: editedResume.name,
-              heading: HeadingLevel.HEADING_1,
-              alignment: AlignmentType.CENTER
-            }),
-            new Paragraph({
-              text: `${editedResume.contact.email} | ${editedResume.contact.phone}`,
-              alignment: AlignmentType.CENTER
-            }),
-            new Paragraph({
-              text: editedResume.contact.location,
-              alignment: AlignmentType.CENTER
-            }),
-            new Paragraph({}),
+      // Create a clone of the content to avoid modifying the original
+      const content = containerRef.current.cloneNode(true);
 
-            // Summary
-            new Paragraph({
-              text: 'Professional Summary',
-              heading: HeadingLevel.HEADING_2
-            }),
-            new Paragraph({
-              text: editedResume.summary
-            }),
-            new Paragraph({}),
+      // Configure PDF options
+      const opt = {
+        margin: [10, 10, 20, 10], // Default margins for all pages
+        filename: 'resume.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          scrollY: 0,
+          scrollX: 0,
+          windowWidth: 794,
+          windowHeight: 1123,
+          backgroundColor: '#ffffff',
+          logging: true,
+          allowTaint: true,
+          removeContainer: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true,
+          hotfixes: ['px_scaling'],
+          putOnlyUsedFonts: true
+        }
+      };
 
-            // Experience
-            new Paragraph({
-              text: 'Professional Experience',
-              heading: HeadingLevel.HEADING_2
-            }),
-            ...editedResume.experience.flatMap(exp => [
-              new Paragraph({
-                text: exp.title,
-                heading: HeadingLevel.HEADING_3
-              }),
-              new Paragraph({
-                text: `${exp.company} | ${exp.location} | ${exp.startDate} - ${exp.endDate}`,
-                italics: true
-              }),
-              ...exp.bullets.map(bullet => 
-                new Paragraph({
-                  text: bullet,
-                  bullet: {
-                    level: 0
-                  }
-                })
-              ),
-              new Paragraph({})
-            ]),
+      // Add styles to ensure proper rendering and page breaks
+      const style = document.createElement('style');
+      style.textContent = `
+        @page {
+          margin: 0;
+          padding: 0;
+        }
+        @page :first {
+          margin-top: -40mm;
+        }
+        @page {
+          margin-top: 10mm;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: white;
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        * {
+          box-sizing: border-box;
+        }
+        .docx-wrapper {
+          background-color: white !important;
+          margin: 0 !important;
+          margin-top: -40mm !important;
+          padding: 20mm 20mm 20mm 20mm !important;
+        }
+        .docx-wrapper > *:first-child {
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+        }
+        .page {
+          background-color: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+        }
+        h1 {
+          margin-top: 0.5em !important;
+          margin-bottom: 0.5em !important;
+        }
+        h2 {
+          margin-top: 1em !important;
+          margin-bottom: 0.5em !important;
+        }
+        h3 {
+          margin-top: 0.5em !important;
+          margin-bottom: 0.5em !important;
+        }
+        .page-break-before {
+          page-break-before: always !important;
+          break-before: page !important;
+          background-color: white !important;
+        }
+        .page-break-after {
+          page-break-after: always !important;
+          break-after: page !important;
+          background-color: white !important;
+        }
+        .keep-together {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          background-color: white !important;
+        }
+        .manual-page-break {
+          page-break-before: always !important;
+          break-before: page !important;
+          height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background-color: white !important;
+        }
+      `;
+      content.appendChild(style);
 
-            // Education
-            new Paragraph({
-              text: 'Education',
-              heading: HeadingLevel.HEADING_2
-            }),
-            ...editedResume.education.flatMap(edu => [
-              new Paragraph({
-                text: edu.degree,
-                heading: HeadingLevel.HEADING_3
-              }),
-              new Paragraph({
-                text: `${edu.school} | ${edu.location} | ${edu.startDate} - ${edu.endDate}`
-              }),
-              ...(edu.gpa ? [new Paragraph({ text: `GPA: ${edu.gpa}` })] : []),
-              new Paragraph({})
-            ]),
+      // Process content to prevent breaks
+      const processContent = (element) => {
+        if (!element) return;
 
-            // Skills
-            new Paragraph({
-              text: 'Skills',
-              heading: HeadingLevel.HEADING_2
-            }),
-            new Paragraph({
-              text: editedResume.skills.map(skill => skill.name).join(', ')
-            }),
-            new Paragraph({}),
+        // Add keep-together class to elements that should stay together
+        if (element.tagName === 'P' || element.tagName === 'LI') {
+          element.classList.add('keep-together');
+        }
 
-            // Certifications
-            ...(editedResume.certifications.length > 0 ? [
-              new Paragraph({
-                text: 'Certifications',
-                heading: HeadingLevel.HEADING_2
-              }),
-              ...editedResume.certifications.map(cert =>
-                new Paragraph({
-                  text: `${cert.name} - ${cert.issuer} (${cert.date})`
-                })
-              )
-            ] : [])
-          ]
-        }]
+        // Process child elements
+        Array.from(element.children).forEach(child => processContent(child));
+      };
+
+      // Process all content
+      processContent(content);
+
+      // Add page break classes to major sections
+      const sections = content.querySelectorAll('h2');
+      sections.forEach((section, index) => {
+        if (index > 0) { // Skip the first section
+          section.classList.add('page-break-before');
+        }
       });
 
-      // Generate the document as a blob
-      const blob = await Packer.toBlob(doc);
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resume.docx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // Generate PDF
+      html2pdf().set(opt).from(content).save();
     } catch (err) {
-      console.error('Error downloading DOCX:', err);
-      setError('Failed to download resume. Please try again.');
+      console.error('Error generating PDF:', err);
+      setError('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -458,10 +484,10 @@ const ResumeEditor = () => {
             variant="contained"
             color="secondary"
             startIcon={<DownloadIcon />}
-            onClick={handleDownloadDOCX}
+            onClick={handleDownloadPDF}
             disabled={loading}
           >
-            Download DOCX
+            Download PDF
           </Button>
           <Button
             variant="outlined"
