@@ -2,28 +2,24 @@ import { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Heading,
-  Textarea,
+  Typography,
+  TextField,
   Button,
-  VStack,
-  useToast,
-  Text,
-  Spinner,
+  Stack,
+  CircularProgress,
   Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
-} from '@chakra-ui/react';
+  Paper
+} from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { resumeService } from '../services/api';
 
 function Home() {
   const [jobDescription, setJobDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFromExtension, setIsFromExtension] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
 
   // Check for job description in URL parameters when component mounts
   useEffect(() => {
@@ -42,84 +38,70 @@ function Home() {
 
   const handleGenerateResume = async () => {
     if (!jobDescription.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a job description',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setError('Please enter a job description');
       return;
     }
 
     setIsLoading(true);
+    setError('');
     try {
-      const response = await axios.post('/api/generate-resume', {
-        jobDescription,
-      });
-
-      // Store the generated resume in localStorage
-      localStorage.setItem('generatedResume', response.data.resume);
+      const { data } = await resumeService.generateResume(jobDescription);
+      localStorage.setItem('generatedResume', JSON.stringify(data));
       navigate('/preview');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to generate resume. Please try again.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setError(error.response?.data?.error || 'Failed to generate resume. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Container maxW="container.md" py={10}>
-      <VStack spacing={8} align="stretch">
+    <Container maxWidth="md" sx={{ py: 5 }}>
+      <Stack spacing={4}>
         <Box textAlign="center">
-          <Heading as="h1" size="2xl" mb={4}>
+          <Typography variant="h3" component="h1" gutterBottom>
             Resume Generator
-          </Heading>
-          <Text fontSize="lg" color="gray.600">
+          </Typography>
+          <Typography variant="h6" color="text.secondary">
             {isFromExtension 
               ? "We've detected a job description from your selection. Review and generate your tailored resume."
               : "Paste a job description below to generate a tailored resume"}
-          </Text>
+          </Typography>
         </Box>
 
         {isFromExtension && (
-          <Alert status="info" borderRadius="md">
-            <AlertIcon />
-            <Box>
-              <AlertTitle>Job Description Detected!</AlertTitle>
-              <AlertDescription>
-                The job description has been automatically populated from your selection. You can modify it if needed.
-              </AlertDescription>
-            </Box>
+          <Alert severity="info">
+            Job Description Detected! The job description has been automatically populated from your selection. You can modify it if needed.
           </Alert>
         )}
 
-        <Textarea
+        {error && (
+          <Alert severity="error" onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
+
+        <TextField
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the job description here..."
-          size="lg"
-          minH="300px"
-          resize="vertical"
+          multiline
+          rows={12}
+          fullWidth
+          variant="outlined"
         />
 
         <Button
-          colorScheme="brand"
-          size="lg"
+          variant="contained"
+          color="primary"
+          size="large"
           onClick={handleGenerateResume}
-          isLoading={isLoading}
-          loadingText="Generating..."
-          spinner={<Spinner />}
+          disabled={isLoading}
+          startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
         >
-          Generate Resume
+          {isLoading ? 'Generating...' : 'Generate Resume'}
         </Button>
-      </VStack>
+      </Stack>
     </Container>
   );
 }

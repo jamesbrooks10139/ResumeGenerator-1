@@ -2,24 +2,21 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  FormControl,
-  FormLabel,
-  Input,
-  VStack,
-  Heading,
-  Text,
-  useToast,
+  TextField,
+  Stack,
+  Typography,
+  Snackbar,
+  Alert,
   Container,
   Grid,
-  GridItem,
   IconButton,
-  Flex,
-  Textarea,
+  FormControlLabel,
   Checkbox,
-  Divider
-} from '@chakra-ui/react';
-import { DeleteIcon, EditIcon } from '@chakra-ui/icons';
-import axios from 'axios';
+  Divider,
+  Paper
+} from '@mui/material';
+import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { employmentService } from '../../services/api';
 
 const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -33,7 +30,7 @@ const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
     is_current: false,
     description: ''
   });
-  const toast = useToast();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -46,41 +43,28 @@ const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       if (currentEntry) {
-        await axios.put(
-          `http://localhost:3030/api/employment/${currentEntry.id}`,
-          formData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast({
-          title: 'Employment history updated',
-          status: 'success',
-          duration: 3000,
-          isClosable: true
+        await employmentService.updateEmployment(currentEntry.id, formData);
+        setSnackbar({
+          open: true,
+          message: 'Employment history updated successfully',
+          severity: 'success'
         });
       } else {
-        await axios.post(
-          'http://localhost:3030/api/employment',
-          formData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast({
-          title: 'Employment history added',
-          status: 'success',
-          duration: 3000,
-          isClosable: true
+        await employmentService.addEmployment(formData);
+        setSnackbar({
+          open: true,
+          message: 'Employment history added successfully',
+          severity: 'success'
         });
       }
       onUpdate();
       resetForm();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.error || 'Failed to save employment history',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || 'Failed to save employment history',
+        severity: 'error'
       });
     }
   };
@@ -101,24 +85,18 @@ const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
 
   const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:3030/api/employment/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast({
-        title: 'Employment history deleted',
-        status: 'success',
-        duration: 3000,
-        isClosable: true
+      await employmentService.deleteEmployment(id);
+      setSnackbar({
+        open: true,
+        message: 'Employment history deleted successfully',
+        severity: 'success'
       });
       onUpdate();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.error || 'Failed to delete employment history',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || 'Failed to delete employment history',
+        severity: 'error'
       });
     }
   };
@@ -138,159 +116,176 @@ const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
   };
 
   return (
-    <Container maxW="container.md" py={10}>
-      <VStack spacing={8} align="stretch">
+    <Container maxWidth="md" sx={{ py: 5 }}>
+      <Stack spacing={4}>
         <Box>
-          <Heading size="lg" mb={4}>
+          <Typography variant="h4" sx={{ mb: 3 }}>
             Employment History
-          </Heading>
+          </Typography>
           <form onSubmit={handleSubmit}>
-            <VStack spacing={4}>
-              <Grid templateColumns="repeat(2, 1fr)" gap={4} width="100%">
-                <GridItem colSpan={2}>
-                  <FormControl isRequired>
-                    <FormLabel>Company Name</FormLabel>
-                    <Input
-                      name="company_name"
-                      value={formData.company_name}
-                      onChange={handleChange}
-                      placeholder="Enter company name"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl isRequired>
-                    <FormLabel>Position</FormLabel>
-                    <Input
-                      name="position"
-                      value={formData.position}
-                      onChange={handleChange}
-                      placeholder="Enter your position"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl isRequired>
-                    <FormLabel>Location</FormLabel>
-                    <Input
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      placeholder="Enter location"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl isRequired>
-                    <FormLabel>Start Date</FormLabel>
-                    <Input
-                      type="date"
-                      name="start_date"
-                      value={formData.start_date}
-                      onChange={handleChange}
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl isRequired>
-                    <FormLabel>End Date</FormLabel>
-                    <Input
-                      type="date"
-                      name="end_date"
-                      value={formData.end_date}
-                      onChange={handleChange}
-                      disabled={formData.is_current}
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem colSpan={2}>
-                  <Checkbox
-                    name="is_current"
-                    isChecked={formData.is_current}
+            <Stack spacing={3}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Company Name"
+                    name="company_name"
+                    value={formData.company_name}
                     onChange={handleChange}
-                  >
-                    I currently work here
-                  </Checkbox>
-                </GridItem>
-                <GridItem colSpan={2}>
-                  <FormControl>
-                    <FormLabel>Description</FormLabel>
-                    <Textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      placeholder="Describe your responsibilities and achievements"
-                      rows={4}
-                    />
-                  </FormControl>
-                </GridItem>
+                    placeholder="Enter company name"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Position"
+                    name="position"
+                    value={formData.position}
+                    onChange={handleChange}
+                    placeholder="Enter your position"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="Enter location"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    type="date"
+                    label="Start Date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    fullWidth
+                    type="date"
+                    label="End Date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    disabled={formData.is_current}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="is_current"
+                        checked={formData.is_current}
+                        onChange={handleChange}
+                      />
+                    }
+                    label="I currently work here"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Describe your responsibilities and achievements"
+                    multiline
+                    rows={4}
+                  />
+                </Grid>
               </Grid>
-              <Flex gap={4} width="100%">
+              <Box sx={{ display: 'flex', gap: 2 }}>
                 <Button
                   type="submit"
-                  colorScheme="blue"
-                  flex={1}
+                  variant="contained"
+                  color="primary"
+                  fullWidth
                 >
                   {isEditing ? 'Update' : 'Add'} Employment
                 </Button>
                 {isEditing && (
                   <Button
                     onClick={resetForm}
-                    variant="outline"
-                    flex={1}
+                    variant="outlined"
+                    fullWidth
                   >
                     Cancel
                   </Button>
                 )}
-              </Flex>
-            </VStack>
+              </Box>
+            </Stack>
           </form>
         </Box>
 
         <Divider />
 
-        <VStack spacing={4} align="stretch">
+        <Stack spacing={2}>
           {employmentHistory.map((entry) => (
-            <Box
-              key={entry.id}
-              p={4}
-              borderWidth={1}
-              borderRadius="md"
-              position="relative"
-            >
-              <Flex justify="space-between" align="start" mb={2}>
+            <Paper key={entry.id} sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                 <Box>
-                  <Heading size="md">{entry.position}</Heading>
-                  <Text>{entry.company_name}</Text>
-                  <Text color="gray.600">
+                  <Typography variant="h6">{entry.position}</Typography>
+                  <Typography>{entry.company_name}</Typography>
+                  <Typography color="text.secondary">
                     {entry.location} • {entry.start_date} - {entry.is_current ? 'Present' : entry.end_date}
-                  </Text>
+                  </Typography>
                 </Box>
-                <Flex gap={2}>
+                <Box>
                   <IconButton
-                    icon={<EditIcon />}
                     onClick={() => handleEdit(entry)}
+                    color="primary"
                     aria-label="Edit entry"
-                    size="sm"
-                  />
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
                   <IconButton
-                    icon={<DeleteIcon />}
                     onClick={() => handleDelete(entry.id)}
+                    color="error"
                     aria-label="Delete entry"
-                    size="sm"
-                    colorScheme="red"
-                  />
-                </Flex>
-              </Flex>
+                    size="small"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              </Box>
               {entry.description && (
-                <Text mt={2} color="gray.700">
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
                   {entry.description}
-                </Text>
+                </Typography>
               )}
-            </Box>
+            </Paper>
           ))}
-        </VStack>
-      </VStack>
+        </Stack>
+      </Stack>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

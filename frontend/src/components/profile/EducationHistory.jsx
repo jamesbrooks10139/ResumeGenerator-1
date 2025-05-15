@@ -2,27 +2,24 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  VStack,
-  Heading,
-  Text,
-  useToast,
-  Flex,
+  Stack,
+  Typography,
   IconButton,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  useDisclosure
-} from '@chakra-ui/react';
-import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Alert,
+  Paper
+} from '@mui/material';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import EducationForm from '../EducationForm';
 
 const EducationHistory = ({ education, onUpdate }) => {
   const [editingEducation, setEditingEducation] = useState(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const toast = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const handleAddEducation = async (educationData) => {
     try {
@@ -40,21 +37,18 @@ const EducationHistory = ({ education, onUpdate }) => {
       }
 
       onUpdate();
-      onClose();
-      toast({
-        title: 'Education added',
-        status: 'success',
-        duration: 3000,
-        isClosable: true
+      setIsOpen(false);
+      setSnackbar({
+        open: true,
+        message: 'Education added successfully',
+        severity: 'success'
       });
     } catch (error) {
       console.error('Error adding education:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add education',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Failed to add education',
+        severity: 'error'
       });
     }
   };
@@ -76,20 +70,17 @@ const EducationHistory = ({ education, onUpdate }) => {
 
       onUpdate();
       setEditingEducation(null);
-      toast({
-        title: 'Education updated',
-        status: 'success',
-        duration: 3000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Education updated successfully',
+        severity: 'success'
       });
     } catch (error) {
       console.error('Error updating education:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update education',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Failed to update education',
+        severity: 'error'
       });
     }
   };
@@ -112,112 +103,110 @@ const EducationHistory = ({ education, onUpdate }) => {
       }
 
       onUpdate();
-      toast({
-        title: 'Education deleted',
-        status: 'success',
-        duration: 3000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Education deleted successfully',
+        severity: 'success'
       });
     } catch (error) {
       console.error('Error deleting education:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete education',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete education',
+        severity: 'error'
       });
     }
   };
 
   return (
     <Box>
-      <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="lg">Education</Heading>
-        <Button colorScheme="blue" onClick={onOpen}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4">Education</Typography>
+        <Button variant="contained" color="primary" onClick={() => setIsOpen(true)}>
           Add Education
         </Button>
-      </Flex>
+      </Box>
 
-      <VStack spacing={4} align="stretch">
+      <Stack spacing={3}>
         {education.map((edu) => (
-          <Box
-            key={edu.id}
-            p={4}
-            borderWidth="1px"
-            borderRadius="lg"
-            position="relative"
-          >
-            <Flex justify="space-between" align="start">
-              <VStack align="start" spacing={2}>
-                <Heading size="md">{edu.school_name}</Heading>
-                <Text color="gray.600">{edu.location}</Text>
-                <Text>{edu.degree} in {edu.field_of_study}</Text>
-                <Text color="gray.600">
+          <Paper key={edu.id} sx={{ p: 3, position: 'relative' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Stack spacing={1}>
+                <Typography variant="h6">{edu.school_name}</Typography>
+                <Typography color="text.secondary">{edu.location}</Typography>
+                <Typography>{edu.degree} in {edu.field_of_study}</Typography>
+                <Typography color="text.secondary">
                   {edu.start_date} - {edu.is_current ? 'Present' : edu.end_date}
-                </Text>
-                {edu.gpa && <Text color="gray.600">GPA: {edu.gpa}</Text>}
+                </Typography>
+                {edu.gpa && <Typography color="text.secondary">GPA: {edu.gpa}</Typography>}
                 {edu.description && (
-                  <Text mt={2}>{edu.description}</Text>
+                  <Typography sx={{ mt: 2 }}>{edu.description}</Typography>
                 )}
-              </VStack>
-              <Flex>
+              </Stack>
+              <Box>
                 <IconButton
-                  icon={<EditIcon />}
-                  variant="ghost"
-                  colorScheme="blue"
                   onClick={() => setEditingEducation(edu)}
+                  color="primary"
                   aria-label="Edit education"
-                />
+                >
+                  <EditIcon />
+                </IconButton>
                 <IconButton
-                  icon={<DeleteIcon />}
-                  variant="ghost"
-                  colorScheme="red"
                   onClick={() => handleDeleteEducation(edu.id)}
+                  color="error"
                   aria-label="Delete education"
-                />
-              </Flex>
-            </Flex>
-          </Box>
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            </Box>
+          </Paper>
         ))}
-      </VStack>
+      </Stack>
 
-      {/* Add Education Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Add Education</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <EducationForm
-              onSubmit={handleAddEducation}
-              onCancel={onClose}
-            />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      {/* Add Education Dialog */}
+      <Dialog open={isOpen} onClose={() => setIsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Add Education</DialogTitle>
+        <DialogContent>
+          <EducationForm
+            onSubmit={handleAddEducation}
+            onCancel={() => setIsOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Education Modal */}
-      <Modal
-        isOpen={!!editingEducation}
+      {/* Edit Education Dialog */}
+      <Dialog
+        open={!!editingEducation}
         onClose={() => setEditingEducation(null)}
-        size="xl"
+        maxWidth="md"
+        fullWidth
       >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Edit Education</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {editingEducation && (
-              <EducationForm
-                education={editingEducation}
-                onSubmit={(data) => handleUpdateEducation(editingEducation.id, data)}
-                onCancel={() => setEditingEducation(null)}
-              />
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+        <DialogTitle>Edit Education</DialogTitle>
+        <DialogContent>
+          {editingEducation && (
+            <EducationForm
+              education={editingEducation}
+              onSubmit={(data) => handleUpdateEducation(editingEducation.id, data)}
+              onCancel={() => setEditingEducation(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

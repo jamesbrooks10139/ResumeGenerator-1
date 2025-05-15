@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { authService, profileService } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -12,18 +12,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetchUserProfile(token);
+      fetchUserProfile();
     } else {
       setLoading(false);
     }
   }, []);
 
-  const fetchUserProfile = async (token) => {
+  const fetchUserProfile = async () => {
     try {
-      const response = await axios.get('http://localhost:3030/api/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(response.data.user);
+      const { data } = await profileService.getProfile();
+      setUser(data.user);
       setError(null);
     } catch (err) {
       console.error('Error fetching user profile:', err);
@@ -38,14 +36,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, rememberMe = false) => {
     try {
-      const response = await axios.post('http://localhost:3030/api/auth/login', {
-        email,
-        password,
-        rememberMe
-      });
-      const { token } = response.data;
+      const { data } = await authService.login({ email, password, rememberMe });
+      const { token } = data;
       localStorage.setItem('token', token);
-      await fetchUserProfile(token);
+      await fetchUserProfile();
       return true;
     } catch (err) {
       console.error('Login error:', err);
@@ -56,11 +50,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:3030/api/auth/register', userData);
-      const { token, requiresVerification } = response.data;
+      const { data } = await authService.register(userData);
+      const { token, requiresVerification } = data;
       localStorage.setItem('token', token);
       setRequiresVerification(requiresVerification);
-      await fetchUserProfile(token);
+      await fetchUserProfile();
       return true;
     } catch (err) {
       console.error('Registration error:', err);
@@ -78,11 +72,8 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put('http://localhost:3030/api/profile', profileData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await fetchUserProfile(token);
+      await profileService.updateProfile(profileData);
+      await fetchUserProfile();
       return true;
     } catch (err) {
       console.error('Profile update error:', err);
@@ -93,7 +84,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyEmail = async (token) => {
     try {
-      await axios.get(`http://localhost:3030/api/auth/verify-email?token=${token}`);
+      await authService.verifyEmail(token);
       setRequiresVerification(false);
       return true;
     } catch (err) {
@@ -105,7 +96,7 @@ export const AuthProvider = ({ children }) => {
 
   const forgotPassword = async (email) => {
     try {
-      await axios.post('http://localhost:3030/api/auth/forgot-password', { email });
+      await authService.forgotPassword(email);
       return true;
     } catch (err) {
       console.error('Forgot password error:', err);
@@ -116,10 +107,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (token, newPassword) => {
     try {
-      await axios.post('http://localhost:3030/api/auth/reset-password', {
-        token,
-        newPassword
-      });
+      await authService.resetPassword(token, newPassword);
       return true;
     } catch (err) {
       console.error('Password reset error:', err);

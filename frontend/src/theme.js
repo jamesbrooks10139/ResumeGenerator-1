@@ -1,37 +1,48 @@
-import { extendTheme } from '@chakra-ui/react';
+import { createTheme } from '@mui/material/styles';
 
-const theme = extendTheme({
-  colors: {
-    brand: {
-      50: '#f0f9ff',
-      100: '#e0f2fe',
-      200: '#bae6fd',
-      300: '#7dd3fc',
-      400: '#38bdf8',
-      500: '#0ea5e9',
-      600: '#0284c7',
-      700: '#0369a1',
-      800: '#075985',
-      900: '#0c4a6e',
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0ea5e9',
+      light: '#38bdf8',
+      dark: '#0369a1',
+      contrastText: '#ffffff',
+    },
+    secondary: {
+      main: '#dc004e',
+      light: '#ff4081',
+      dark: '#9a0036',
+      contrastText: '#ffffff',
     },
   },
-  fonts: {
-    heading: 'Inter, sans-serif',
-    body: 'Inter, sans-serif',
+  typography: {
+    fontFamily: 'Inter, sans-serif',
+    h1: {
+      fontWeight: 600,
+    },
+    h2: {
+      fontWeight: 600,
+    },
+    h3: {
+      fontWeight: 600,
+    },
+    h4: {
+      fontWeight: 600,
+    },
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
   },
   components: {
-    Button: {
-      baseStyle: {
-        fontWeight: 'semibold',
-        borderRadius: 'md',
-      },
-      variants: {
-        solid: {
-          bg: 'brand.500',
-          color: 'white',
-          _hover: {
-            bg: 'brand.600',
-          },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: 8,
         },
       },
     },

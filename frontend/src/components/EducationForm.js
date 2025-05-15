@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FormControl,
-  FormLabel,
-  Input,
-  Textarea,
-  Checkbox,
+  Box,
   Button,
-  VStack,
+  TextField,
+  Checkbox,
+  FormControlLabel,
   Grid,
-  GridItem,
-  Flex
-} from '@chakra-ui/react';
+  Stack
+} from '@mui/material';
 
 const EducationForm = ({ education, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -56,114 +53,113 @@ const EducationForm = ({ education, onSubmit, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <VStack spacing={4}>
-        <FormControl isRequired>
-          <FormLabel>School Name</FormLabel>
-          <Input
-            name="school_name"
-            value={formData.school_name}
-            onChange={handleChange}
-            placeholder="Enter school name"
-          />
-        </FormControl>
+      <Stack spacing={3}>
+        <TextField
+          required
+          fullWidth
+          label="School Name"
+          name="school_name"
+          value={formData.school_name}
+          onChange={handleChange}
+          placeholder="Enter school name"
+        />
 
-        <FormControl>
-          <FormLabel>Location</FormLabel>
-          <Input
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            placeholder="Enter location"
-          />
-        </FormControl>
+        <TextField
+          fullWidth
+          label="Location"
+          name="location"
+          value={formData.location}
+          onChange={handleChange}
+          placeholder="Enter location"
+        />
 
-        <FormControl isRequired>
-          <FormLabel>Degree</FormLabel>
-          <Input
-            name="degree"
-            value={formData.degree}
-            onChange={handleChange}
-            placeholder="Enter degree"
-          />
-        </FormControl>
+        <TextField
+          required
+          fullWidth
+          label="Degree"
+          name="degree"
+          value={formData.degree}
+          onChange={handleChange}
+          placeholder="Enter degree"
+        />
 
-        <FormControl>
-          <FormLabel>Field of Study</FormLabel>
-          <Input
-            name="field_of_study"
-            value={formData.field_of_study}
-            onChange={handleChange}
-            placeholder="Enter field of study"
-          />
-        </FormControl>
+        <TextField
+          fullWidth
+          label="Field of Study"
+          name="field_of_study"
+          value={formData.field_of_study}
+          onChange={handleChange}
+          placeholder="Enter field of study"
+        />
 
-        <Grid templateColumns="repeat(2, 1fr)" gap={4} width="100%">
-          <GridItem>
-            <FormControl isRequired>
-              <FormLabel>Start Date</FormLabel>
-              <Input
-                type="date"
-                name="start_date"
-                value={formData.start_date}
-                onChange={handleChange}
-              />
-            </FormControl>
-          </GridItem>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              required
+              fullWidth
+              type="date"
+              label="Start Date"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleChange}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
 
-          <GridItem>
-            <FormControl>
-              <FormLabel>End Date</FormLabel>
-              <Input
-                type="date"
-                name="end_date"
-                value={formData.end_date}
-                onChange={handleChange}
-                isDisabled={formData.is_current}
-              />
-            </FormControl>
-          </GridItem>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              type="date"
+              label="End Date"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleChange}
+              disabled={formData.is_current}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
         </Grid>
 
-        <FormControl>
-          <Checkbox
-            name="is_current"
-            isChecked={formData.is_current}
-            onChange={handleChange}
-          >
-            Currently Studying
-          </Checkbox>
-        </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              name="is_current"
+              checked={formData.is_current}
+              onChange={handleChange}
+            />
+          }
+          label="Currently Studying"
+        />
 
-        <FormControl>
-          <FormLabel>GPA</FormLabel>
-          <Input
-            name="gpa"
-            value={formData.gpa}
-            onChange={handleChange}
-            placeholder="Enter GPA"
-          />
-        </FormControl>
+        <TextField
+          fullWidth
+          label="GPA"
+          name="gpa"
+          value={formData.gpa}
+          onChange={handleChange}
+          placeholder="Enter GPA"
+        />
 
-        <FormControl>
-          <FormLabel>Description</FormLabel>
-          <Textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Enter description"
-            rows={3}
-          />
-        </FormControl>
+        <TextField
+          fullWidth
+          label="Description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Enter description"
+          multiline
+          rows={3}
+        />
 
-        <Flex justify="flex-end" width="100%" gap={3}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           <Button onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" colorScheme="blue">
+          <Button type="submit" variant="contained" color="primary">
             {education ? 'Update' : 'Add'} Education
           </Button>
-        </Flex>
-      </VStack>
+        </Box>
+      </Stack>
     </form>
   );
 };

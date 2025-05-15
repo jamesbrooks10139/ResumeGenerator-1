@@ -2,17 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
-  FormControl,
-  FormLabel,
-  Input,
-  VStack,
-  Heading,
-  useToast,
+  TextField,
+  Stack,
+  Typography,
   Container,
   Grid,
-  GridItem,
-  Divider
-} from '@chakra-ui/react';
+  Divider,
+  Snackbar,
+  Alert
+} from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import EmploymentHistory from './EmploymentHistory';
 import EducationHistory from './EducationHistory';
@@ -29,7 +27,7 @@ const Profile = () => {
   const [employmentHistory, setEmploymentHistory] = useState([]);
   const [education, setEducation] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const toast = useToast();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -49,15 +47,13 @@ const Profile = () => {
       setEducation(data.education || []);
     } catch (error) {
       console.error('Error fetching profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch profile',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch profile',
+        severity: 'error'
       });
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchProfile();
@@ -78,20 +74,17 @@ const Profile = () => {
     try {
       const success = await updateProfile(formData);
       if (success) {
-        toast({
-          title: 'Profile updated',
-          status: 'success',
-          duration: 3000,
-          isClosable: true
+        setSnackbar({
+          open: true,
+          message: 'Profile updated successfully',
+          severity: 'success'
         });
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update profile',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to update profile',
+        severity: 'error'
       });
     } finally {
       setIsLoading(false);
@@ -99,81 +92,78 @@ const Profile = () => {
   };
 
   return (
-    <Container maxW="container.md" py={10}>
-      <VStack spacing={8} align="stretch">
+    <Container maxWidth="md" sx={{ py: 5 }}>
+      <Stack spacing={4}>
         <Box>
-          <Heading size="lg" mb={4}>
+          <Typography variant="h4" sx={{ mb: 3 }}>
             Profile Information
-          </Heading>
+          </Typography>
           <form onSubmit={handleSubmit}>
-            <VStack spacing={4}>
-              <Grid templateColumns="repeat(2, 1fr)" gap={4} width="100%">
-                <GridItem colSpan={2}>
-                  <FormControl isRequired>
-                    <FormLabel>Full Name</FormLabel>
-                    <Input
-                      name="full_name"
-                      value={formData.full_name}
-                      onChange={handleChange}
-                      placeholder="Enter your full name"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl>
-                    <FormLabel>Phone</FormLabel>
-                    <Input
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="Enter your phone number"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl>
-                    <FormLabel>Personal Email</FormLabel>
-                    <Input
-                      type="email"
-                      name="personal_email"
-                      value={formData.personal_email}
-                      onChange={handleChange}
-                      placeholder="Enter your personal email"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl>
-                    <FormLabel>LinkedIn URL</FormLabel>
-                    <Input
-                      name="linkedin_url"
-                      value={formData.linkedin_url}
-                      onChange={handleChange}
-                      placeholder="Enter your LinkedIn profile URL"
-                    />
-                  </FormControl>
-                </GridItem>
-                <GridItem>
-                  <FormControl>
-                    <FormLabel>GitHub URL</FormLabel>
-                    <Input
-                      name="github_url"
-                      value={formData.github_url}
-                      onChange={handleChange}
-                      placeholder="Enter your GitHub profile URL"
-                    />
-                  </FormControl>
-                </GridItem>
+            <Stack spacing={3}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Full Name"
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleChange}
+                    placeholder="Enter your full name"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="Enter your phone number"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="email"
+                    label="Personal Email"
+                    name="personal_email"
+                    value={formData.personal_email}
+                    onChange={handleChange}
+                    placeholder="Enter your personal email"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="LinkedIn URL"
+                    name="linkedin_url"
+                    value={formData.linkedin_url}
+                    onChange={handleChange}
+                    placeholder="Enter your LinkedIn profile URL"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="GitHub URL"
+                    name="github_url"
+                    value={formData.github_url}
+                    onChange={handleChange}
+                    placeholder="Enter your GitHub profile URL"
+                  />
+                </Grid>
               </Grid>
               <Button
                 type="submit"
-                colorScheme="blue"
-                width="full"
-                isLoading={isLoading}
+                variant="contained"
+                color="primary"
+                fullWidth
+                disabled={isLoading}
               >
-                Update Profile
+                {isLoading ? 'Updating...' : 'Update Profile'}
               </Button>
-            </VStack>
+            </Stack>
           </form>
         </Box>
 
@@ -190,7 +180,21 @@ const Profile = () => {
           education={education}
           onUpdate={fetchProfile}
         />
-      </VStack>
+      </Stack>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

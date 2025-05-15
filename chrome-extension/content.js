@@ -307,107 +307,12 @@ function createModal(selectedText = '') {
 
   // Download DOCX button
   const downloadDocxBtn = modal.querySelector('.download-docx');
-  downloadDocxBtn.addEventListener('click', async () => {
-    try {
-      if (!currentResumeData) {
-        throw new Error('No resume data available');
-      }
-
-      const token = await new Promise((resolve) => {
-        chrome.storage.local.get(['token'], (result) => {
-          resolve(result.token);
-        });
-      });
-
-      if (!token) {
-        throw new Error('Please log in to download the resume');
-      }
-
-      const response = await fetch(`${backendUrl}/download/docx`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ resume: currentResumeData })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download DOCX');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resume.docx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading DOCX:', error);
-      alert('Failed to download DOCX: ' + error.message);
+  downloadDocxBtn.addEventListener('click', () => {
+    if (!currentResumeData) {
+      alert('Please generate a resume first');
+      return;
     }
-  });
-
-  // Handle text selection
-  function handleTextSelection() {
-    const selection = window.getSelection();
-    
-    // Get the selected HTML content
-    let selectedHTML = '';
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const fragment = range.cloneContents();
-      const tempDiv = document.createElement('div');
-      tempDiv.appendChild(fragment);
-      selectedHTML = tempDiv.innerHTML;
-    }
-    
-    const selectedText = selection.toString().trim();
-
-    // Remove existing button if any
-    const existingButton = document.getElementById('resume-generator-button');
-    if (existingButton) {
-      existingButton.remove();
-    }
-
-    if (selectedText) {
-      const button = createGenerateButton();
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-
-      // Position the button near the selection
-      button.style.left = `${rect.left + window.scrollX}px`;
-      button.style.top = `${rect.bottom + 10}px`;
-
-      button.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        createModal(selectedHTML || selectedText);
-      });
-
-      document.body.appendChild(button);
-    }
-  }
-
-  // Add event listeners
-  document.addEventListener('mouseup', handleTextSelection);
-  document.addEventListener('keyup', (event) => {
-    if (event.key === 'Escape') {
-      const button = document.getElementById('resume-generator-button');
-      if (button) button.remove();
-      const modal = document.querySelector('.resume-modal-overlay');
-      if (modal) modal.remove();
-    }
-  });
-
-  // Listen for messages from the extension
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === 'SHOW_MODAL') {
-      createModal(request.jobDescription || '');
-      sendResponse({ success: true });
-    }
+    downloadAsDocx(currentResumeData);
   });
 
   // Helper function to format resume content
@@ -535,67 +440,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Helper function to format resume content
-function formatResumeContent(resume) {
-  let html = `
-    <div class="resume-content" contenteditable="true">
-      <div class="resume-header">
-        <h1 contenteditable="true">${resume.name}</h1>
-        <div class="resume-contact" contenteditable="true">
-          ${resume.contact.email} | ${resume.contact.phonenumber} | ${resume.contact.linkedinURL} | ${resume.contact.github}
-        </div>
-      </div>
+// Add DOCX download functionality
+async function downloadAsDocx(resumeData) {
+  try {
+    const response = await fetch(`${backendUrl}/generate-docx`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getToken()}`
+      },
+      body: JSON.stringify({ resume: resumeData })
+    });
 
-      <div class="resume-section">
-        <h2>Professional Summary</h2>
-        <p contenteditable="true">${resume.summary}</p>
-      </div>
+    if (!response.ok) {
+      throw new Error('Failed to generate DOCX');
+    }
 
-      <div class="resume-section">
-        <h2>Professional Experience</h2>
-        ${resume.experience.map(exp => `
-          <div class="resume-experience">
-            <h3 contenteditable="true">${exp.company}, ${exp.location}</h3>
-            <div class="resume-position" contenteditable="true">${exp.position} (${exp.dates})</div>
-            <ul>
-              ${exp.bullets.map(bullet => `<li contenteditable="true">${bullet}</li>`).join('')}
-            </ul>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="resume-section">
-        <h2>Skills & Other</h2>
-        ${resume.skills.map(skillSection => `
-          <div class="resume-skills">
-            <h3 contenteditable="true">${skillSection.section}</h3>
-            <p contenteditable="true">${skillSection.list.join(', ')}</p>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="resume-section">
-        <h2>Education</h2>
-        ${resume.education.map(edu => `
-          <div class="resume-education">
-            <h3 contenteditable="true">${edu.school}, ${edu.location}</h3>
-            <div class="resume-program" contenteditable="true">${edu.program} (${edu.dates})</div>
-          </div>
-        `).join('')}
-      </div>
-
-      ${resume.certifications && resume.certifications.length > 0 ? `
-        <div class="resume-section">
-          <h2>Certifications</h2>
-          ${resume.certifications.map(cert => `
-            <div class="resume-certification">
-              <h3 contenteditable="true">${cert.name}</h3>
-              <div class="resume-issued" contenteditable="true">Issued ${cert.issued}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-    </div>
-  `;
-  return html;
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${resumeData.name.replace(/\s+/g, '_')}_Resume.docx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Error downloading DOCX:', error);
+    alert('Failed to download DOCX: ' + error.message);
+  }
 }

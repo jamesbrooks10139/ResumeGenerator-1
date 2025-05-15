@@ -524,17 +524,17 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
         dates: clearedText(exp.dates) || '',
         bullets: exp.bullets || []
       })),
-      skills: resumeData.skills.map(skillSection => ({
+      skills: resumeData.skills?.map(skillSection => ({
         section: skillSection.section,
         list: skillSection.list
       })),
-      education: resumeData.education.map(edu => ({
+      education: resumeData.education?.map(edu => ({
         school: clearedText(edu.school) || '',
         location: clearedText(edu.location) || '',
         program: clearedText(edu.program) || '',
         dates: clearedText(edu.dates) || ''
       })),
-      certifications: resumeData.certifications.map(cert => ({
+      certifications: resumeData.certifications?.map(cert => ({
         name: clearedText(cert.name) || '',
         issued: clearedText(cert.issued) || ''
       }))
