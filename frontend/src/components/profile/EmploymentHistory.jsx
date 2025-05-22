@@ -162,25 +162,25 @@ const EmploymentHistory = ({ employmentHistory, onUpdate }) => {
                   <TextField
                     required
                     fullWidth
-                    type="date"
                     label="Start Date"
                     name="start_date"
                     value={formData.start_date}
                     onChange={handleChange}
-                    InputLabelProps={{ shrink: true }}
+                    placeholder="YYYY-MM"
+                    helperText="Enter date as YYYY-MM (e.g., 2020-09)"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     required
                     fullWidth
-                    type="date"
                     label="End Date"
                     name="end_date"
                     value={formData.end_date}
                     onChange={handleChange}
                     disabled={formData.is_current}
-                    InputLabelProps={{ shrink: true }}
+                    placeholder="YYYY-MM"
+                    helperText="Enter date as YYYY-MM (e.g., 2024-05)"
                   />
                 </Grid>
                 <Grid item xs={12}>

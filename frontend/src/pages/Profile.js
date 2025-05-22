@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EducationForm from '../components/EducationForm';
+import { profileService } from '../services/api';
 
 const Profile = () => {
   const [user, setUser] = useState(null);
@@ -14,17 +15,8 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('http://localhost:3030/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
-      }
-
-      const data = await response.json();
+      const response = await profileService.getProfile();
+      const data = response.data;
       setUser(data.user);
       setEmploymentHistory(data.employmentHistory);
       setEducation(data.education);
@@ -42,20 +34,7 @@ const Profile = () => {
 
   const handleAddEducation = async (educationData) => {
     try {
-      const response = await fetch('http://localhost:3030/api/education', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(educationData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add education');
-      }
-
-      // Refresh education data
+      await profileService.addEducation(educationData);
       fetchProfile();
       setShowAddEducation(false);
     } catch (error) {
@@ -66,20 +45,7 @@ const Profile = () => {
 
   const handleUpdateEducation = async (id, educationData) => {
     try {
-      const response = await fetch(`http://localhost:3030/api/education/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(educationData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update education');
-      }
-
-      // Refresh education data
+      await profileService.updateEducation(id, educationData);
       fetchProfile();
       setEditingEducation(null);
     } catch (error) {
@@ -94,18 +60,7 @@ const Profile = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3030/api/education/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete education');
-      }
-
-      // Refresh education data
+      await profileService.deleteEducation(id);
       fetchProfile();
     } catch (error) {
       console.error('Error deleting education:', error);

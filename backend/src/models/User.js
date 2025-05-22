@@ -25,6 +25,7 @@ db.serialize(() => {
     personal_email TEXT,
     linkedin_url TEXT,
     github_url TEXT,
+    location TEXT,
     reset_token TEXT,
     reset_token_expires DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -61,18 +62,37 @@ db.serialize(() => {
   )`);
 });
 
+// MIGRATION: Add location column if it doesn't exist
+// This will run once on startup and add the column if missing
+const addLocationColumn = () => {
+  db.get("PRAGMA table_info(users)", (err, columns) => {
+    if (err) return;
+    db.all("PRAGMA table_info(users)", (err, columns) => {
+      if (err) return;
+      const hasLocation = columns.some(col => col.name === 'location');
+      if (!hasLocation) {
+        db.run('ALTER TABLE users ADD COLUMN location TEXT', (err) => {
+          if (err) console.error('Failed to add location column:', err);
+          else console.log('Added location column to users table');
+        });
+      }
+    });
+  });
+};
+addLocationColumn();
+
 class User {
   static async create(userData) {
-    const { email, password, full_name, phone, personal_email, linkedin_url, github_url } = userData;
+    const { email, password, full_name, phone, personal_email, linkedin_url, github_url, location } = userData;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO users (
           email, password, full_name, phone, personal_email, 
-          linkedin_url, github_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [email, hashedPassword, full_name, phone, personal_email, linkedin_url, github_url],
+          linkedin_url, github_url, location
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [email, hashedPassword, full_name, phone, personal_email, linkedin_url, github_url, location],
         function(err) {
           if (err) reject(err);
           else resolve({ id: this.lastID });
@@ -97,13 +117,13 @@ class User {
   }
 
   static async updateProfile(userId, userData) {
-    const { full_name, phone, personal_email, linkedin_url, github_url } = userData;
+    const { full_name, phone, personal_email, linkedin_url, github_url, location } = userData;
     return new Promise((resolve, reject) => {
       db.run(
         `UPDATE users 
-         SET full_name = ?, phone = ?, personal_email = ?, linkedin_url = ?, github_url = ?
+         SET full_name = ?, phone = ?, personal_email = ?, linkedin_url = ?, github_url = ?, location = ?
          WHERE id = ?`,
-        [full_name, phone, personal_email, linkedin_url, github_url, userId],
+        [full_name, phone, personal_email, linkedin_url, github_url, location, userId],
         (err) => {
           if (err) reject(err);
           else resolve(true);

@@ -17,6 +17,19 @@ const multer = require('multer');
 const { promisify } = require('util');
 const libreofficeConvert = require('libreoffice-convert');
 const convertAsync = promisify(libreofficeConvert.convert);
+const { ConvertToPdf } = require('docx2pdfmaker');
+const PdfPrinter = require('pdfmake');
+const CloudmersiveConvertApiClient = require("cloudmersive-convert-api-client");
+
+// Convert DOCX buffer to PDF using docx2pdfmaker
+const fonts = {
+  Roboto: {
+		normal: 'src/fonts/Roboto-Regular.ttf',
+		bold: 'src/fonts/Roboto-Medium.ttf',
+		italics: 'src/fonts/Roboto-Italic.ttf',
+		bolditalics: 'src/fonts/Roboto-MediumItalic.ttf'
+  },
+};
 
 const app = express();
 const port = process.env.PORT || 3030;
@@ -30,10 +43,18 @@ const openai = new OpenAI({
 // Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+// Setup API client
+const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
+const Apikey = defaultClient.authentications["Apikey"];
+Apikey.apiKey = process.env.CLOUDMERSIVE_API_KEY || "c7c68fa4-552d-4bde-81bc-d5027838297c"; // Use env var or fallback
+const apiInstance = new CloudmersiveConvertApiClient.ConvertDocumentApi();
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: process.env.FRONTEND_URL || 'http://162.218.114.85:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(helmet());
 app.use(morgan('dev'));
@@ -94,7 +115,7 @@ const sendPasswordResetEmail = async (email, token) => {
 // Authentication routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, full_name, phone, personal_email, linkedin_url, github_url } = req.body;
+    const { email, password, full_name, phone, personal_email, linkedin_url, github_url, location } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
@@ -110,7 +131,8 @@ app.post('/api/auth/register', async (req, res) => {
       phone,
       personal_email,
       linkedin_url,
-      github_url
+      github_url,
+      location
     });
 
     // Generate JWT token
@@ -406,7 +428,7 @@ Highlight contributions to user experience, performance optimization, security c
 Showcase leadership, collaboration, and problem-solving skills through examples of cross-functional teamwork, mentoring, or initiative-taking.
 
 For the first company in the experience array:
-Create a unique, realistic, and innovative project aligned with the job description (${jobDescription}).
+Create a unique, realistic, and innovative software project idea that aligns closely with the responsibilities, tech stack, and problem-solving nature described in the job description. The project should reflect the same background, complexity, and technical skills the role requires (e.g., backend development, API design, cloud infrastructure, security practices, data processing, etc.). However, the end product should differ slightly in purpose or presentation—demonstrating creative thinking and a fresh take on applying those same core competencies in a real-world setting. (${jobDescription}).
 
 The project should be technically detailed, impactful, and demonstrate the use of relevant technologies (e.g., specific programming languages, frameworks, or cloud platforms).
 
@@ -415,14 +437,14 @@ Include a measurable outcome in one of the bullets (e.g., "Developed a microserv
 Ensure the project reflects collaboration, problem-solving, and alignment with the job's technical and business goals.
 
 Skills:
-Populate the skills array with at least two objects, each containing:
+Populate the skills array with at least four objects, each containing:
 section: A category name (e.g., "Technical Skills," "Soft Skills," "Tools & Platforms").
 
 list: An array of relevant skills (e.g., ["Python", "JavaScript", "AWS"] for Technical Skills).
 
-Include a balanced mix of technical skills (e.g., programming languages, frameworks, cloud platforms, tools) and soft skills (e.g., leadership, communication, problem-solving).
+Include a extensive mix of technical skills (e.g., programming languages, frameworks, cloud platforms, tools) and soft skills (e.g., leadership, communication, problem-solving).
 
-Ensure skills align with the job description (${jobDescription}) without overloading keywords.
+Ensure skills align with the job description (${jobDescription}).
 
 Avoid duplication across sections; group related skills logically.
 
@@ -481,7 +503,8 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
       max_tokens: 30000,
       presence_penalty: 0.3,
       frequency_penalty: 0.2,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      // stream: true
     });
 
     // Extract the resume content from the API response
@@ -515,7 +538,7 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
 
     const templateData = {
       name: resumeData.name || '',
-      contact: `${resumeData.contact.email} | ${resumeData.contact.phonenumber} | ${resumeData.contact.linkedinURL} | ${resumeData.contact.github}`,
+      contact: `${resumeData.contact.location} | ${resumeData.contact.email} | ${resumeData.contact.phonenumber} | ${resumeData.contact.linkedinURL}`,
       summary: resumeData.summary || '',
       experience: resumeData.experience.map((exp, index) => ({
         company: clearedText(exp.company) || '',
@@ -549,13 +572,35 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
       compression: 'DEFLATE'
     });
 
-    // Convert buffer to base64
-    const base64Content = buffer.toString('base64');
-    
+    // Convert DOCX buffer to PDF using Cloudmersive
+    let pdfContent = null;
+    try {
+      // Write buffer to a temp file
+      const tmpDocxPath = path.join(__dirname, 'tmp_input.docx');
+      const tmpPdfPath = path.join(__dirname, 'tmp_output.pdf');
+      fs.writeFileSync(tmpDocxPath, buffer);
+      const inputFile = fs.createReadStream(tmpDocxPath);
+      // Use promise wrapper for the callback API
+      const convertDocxToPdf = () => new Promise((resolve, reject) => {
+        apiInstance.convertDocumentDocxToPdf(inputFile, (error, data, response) => {
+          if (error) reject(error);
+          else resolve(data);
+        });
+      });
+      const pdfBuffer = await convertDocxToPdf();
+      pdfContent = Buffer.from(pdfBuffer).toString('base64');
+      // Clean up temp file
+      fs.unlinkSync(tmpDocxPath);
+    } catch (err) {
+      console.error('Failed to convert DOCX to PDF (Cloudmersive):', err);
+      pdfContent = null;
+    }
+
     res.json({
       resume: resumeData,
       generatedResume,
-      docxContent: base64Content
+      docxContent: buffer.toString('base64'),
+      pdfContent
     });
   } catch (error) {
     console.error('Error generating resume:', error);
@@ -854,6 +899,6 @@ app.use((err, req, res, next) => {
 });
 
 // Start HTTP server
-app.listen(port, host, () => {
-  console.log(`HTTP server is running on http://${host}:${port}`);
-}); 
+app.listen(port, () => {
+  console.log(`HTTP server is running on ${port}`);
+});

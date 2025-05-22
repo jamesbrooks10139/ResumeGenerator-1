@@ -2,7 +2,6 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:3030',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -78,7 +77,16 @@ export const profileService = {
     api.get('/api/profile/employment'),
   
   getEducation: () => 
-    api.get('/api/profile/education')
+    api.get('/api/profile/education'),
+
+  addEducation: (educationData) =>
+    api.post('/api/education', educationData),
+
+  updateEducation: (id, educationData) =>
+    api.put(`/api/education/${id}`, educationData),
+
+  deleteEducation: (id) =>
+    api.delete(`/api/education/${id}`)
 };
 
 export const employmentService = {

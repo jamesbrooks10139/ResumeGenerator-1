@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import EmploymentHistory from './EmploymentHistory';
 import EducationHistory from './EducationHistory';
+import { profileService } from '../../services/api';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
@@ -22,7 +23,8 @@ const Profile = () => {
     phone: '',
     personal_email: '',
     linkedin_url: '',
-    github_url: ''
+    github_url: '',
+    location: ''
   });
   const [employmentHistory, setEmploymentHistory] = useState([]);
   const [education, setEducation] = useState([]);
@@ -31,17 +33,15 @@ const Profile = () => {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3030/api/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
+      const response = await profileService.getProfile();
+      const data = response.data;
       setFormData({
         full_name: data.user.full_name || '',
         phone: data.user.phone || '',
         personal_email: data.user.personal_email || '',
         linkedin_url: data.user.linkedin_url || '',
-        github_url: data.user.github_url || ''
+        github_url: data.user.github_url || '',
+        location: data.user.location || ''
       });
       setEmploymentHistory(data.employmentHistory || []);
       setEducation(data.education || []);
@@ -151,6 +151,16 @@ const Profile = () => {
                     value={formData.github_url}
                     onChange={handleChange}
                     placeholder="Enter your GitHub profile URL"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="Enter your location (e.g., City, Country)"
                   />
                 </Grid>
               </Grid>

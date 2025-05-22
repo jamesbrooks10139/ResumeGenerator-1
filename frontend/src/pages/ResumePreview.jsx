@@ -19,6 +19,7 @@ import html2canvas from 'html2canvas';
 function ResumePreview() {
   const [resume, setResume] = useState(null);
   const [docxContent, setDocxContent] = useState(null);
+  const [pdfContent, setPdfContent] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
 
@@ -32,6 +33,7 @@ function ResumePreview() {
       const parsedResume = JSON.parse(savedResume);
       setResume(parsedResume.resume);
       setDocxContent(parsedResume.docxContent);
+      setPdfContent(parsedResume.pdfContent || null);
     } catch (err) {
       setSnackbar({
         open: true,
@@ -85,182 +87,34 @@ function ResumePreview() {
     }
   }, [docxContent]);
 
-  const handleDownloadPDF = () => {
-    if (!docxContent) return;
-
+  const handleDownloadPDF = async () => {
+    if (!pdfContent) {
+      setSnackbar({ open: true, message: 'PDF not available. Please regenerate your resume.', severity: 'error' });
+      return;
+    }
     try {
       // Convert base64 to blob
-      const byteString = atob(docxContent);
-      const mimeString = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      const byteString = atob(pdfContent);
       const ab = new ArrayBuffer(byteString.length);
       const ia = new Uint8Array(ab);
-      
       for (let i = 0; i < byteString.length; i++) {
         ia[i] = byteString.charCodeAt(i);
       }
-      
-      const blob = new Blob([ab], { type: mimeString });
-
-      // Create a temporary container for rendering
-      const tempContainer = document.createElement('div');
-      tempContainer.style.width = '210mm'; // A4 width
-      tempContainer.style.padding = '20mm';
-      tempContainer.style.backgroundColor = 'white';
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.visibility = 'hidden';
-      tempContainer.style.height = 'auto';
-      tempContainer.style.overflow = 'visible';
-      document.body.appendChild(tempContainer);
-
-      // Create a wrapper div for the docx content
-      const wrapper = document.createElement('div');
-      wrapper.style.width = '100%';
-      wrapper.style.height = '100%';
-      tempContainer.appendChild(wrapper);
-
-      // Render the docx
-      renderAsync(blob, wrapper, wrapper, {
-        className: 'docx-wrapper',
-        inWrapper: true,
-        ignoreWidth: false,
-        ignoreHeight: false,
-        ignoreFonts: false,
-        breakPages: true,
-        useBase64URL: true,
-        useMathMLPolyfill: true,
-        renderEndnotes: true,
-        renderFootnotes: true,
-        renderFooters: true,
-        renderHeaders: true,
-        title: 'Resume Preview',
-      }).then(async () => {
-        try {
-          // Wait for images to load
-          await Promise.all(
-            Array.from(tempContainer.getElementsByTagName('img')).map(
-              img => new Promise((resolve) => {
-                if (img.complete) {
-                  resolve();
-                } else {
-                  img.onload = resolve;
-                  img.onerror = resolve;
-                }
-              })
-            )
-          );
-
-          // Get all pages
-          const pages = tempContainer.querySelectorAll('.page');
-          if (!pages.length) {
-            console.error('Container content:', tempContainer.innerHTML);
-            throw new Error('No pages found in the document');
-          }
-
-          const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-          });
-
-          // Process each page
-          for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            
-            // Add new page for all pages except the first one
-            if (i > 0) {
-              pdf.addPage();
-            }
-
-            // Make sure the page is visible for capture
-            page.style.visibility = 'visible';
-            page.style.position = 'relative';
-            page.style.left = '0';
-            page.style.top = '0';
-            page.style.width = '210mm';
-            page.style.height = '297mm';
-            page.style.margin = '0';
-            page.style.padding = '0';
-            page.style.backgroundColor = 'white';
-
-            // Convert page to canvas with higher quality
-            const canvas = await html2canvas(page, {
-              scale: 2,
-              useCORS: true,
-              logging: true, // Enable logging for debugging
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              windowWidth: page.scrollWidth,
-              windowHeight: page.scrollHeight,
-              onclone: (clonedDoc) => {
-                const clonedPage = clonedDoc.querySelector('.page');
-                if (clonedPage) {
-                  clonedPage.style.transform = 'none';
-                  clonedPage.style.width = '210mm';
-                  clonedPage.style.height = '297mm';
-                  clonedPage.style.margin = '0';
-                  clonedPage.style.padding = '0';
-                }
-              }
-            });
-
-            // Calculate dimensions to fit the page
-            const imgWidth = 210; // A4 width in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            // Add the image to the PDF
-            pdf.addImage(
-              canvas.toDataURL('image/png', 1.0),
-              'PNG',
-              0,
-              0,
-              imgWidth,
-              imgHeight
-            );
-
-            // Hide the page again
-            page.style.visibility = 'hidden';
-          }
-
-          // Save the PDF
-          pdf.save('resume.pdf');
-
-          // Clean up
-          document.body.removeChild(tempContainer);
-
-          setSnackbar({
-            open: true,
-            message: 'Resume downloaded as PDF',
-            severity: 'success'
-          });
-        } catch (error) {
-          console.error('Error generating PDF:', error);
-          console.error('Container content:', tempContainer.innerHTML);
-          setSnackbar({
-            open: true,
-            message: 'Failed to generate PDF',
-            severity: 'error'
-          });
-          document.body.removeChild(tempContainer);
-        }
-      }).catch(error => {
-        console.error('Error rendering docx:', error);
-        console.error('Container content:', tempContainer.innerHTML);
-        setSnackbar({
-          open: true,
-          message: 'Failed to render document',
-          severity: 'error'
-        });
-        document.body.removeChild(tempContainer);
-      });
+      const blob = new Blob([ab], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      let accountName = resume && resume.full_name ? resume.full_name : 'resume';
+      accountName = accountName.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+      a.href = url;
+      a.download = `${accountName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setSnackbar({ open: true, message: 'Resume downloaded as PDF', severity: 'success' });
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to generate PDF',
-        severity: 'error'
-      });
+      console.log(error);
+      setSnackbar({ open: true, message: 'Failed to download PDF', severity: 'error' });
     }
   };
 
@@ -323,7 +177,7 @@ function ResumePreview() {
           elevation={3}
           sx={{
             p: 3,
-            height: '800px',
+            height: 'calc(100vh - 300px)',
             overflow: 'auto',
             bgcolor: 'background.paper'
           }}
@@ -349,13 +203,6 @@ function ResumePreview() {
             Download DOCX
           </Button>
         </Stack>
-
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/')}
-        >
-          Generate Another Resume
-        </Button>
       </Stack>
 
       <Snackbar

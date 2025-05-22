@@ -54,7 +54,7 @@ const Navbar = () => {
       const { data: resumeData } = await resumeService.generateResume(jobDescription.trim());
       localStorage.setItem('generatedResume', JSON.stringify(resumeData));
       setIsPasteDialogOpen(false);
-      navigate('/editor');
+      navigate('/preview');
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to generate resume');
     } finally {
@@ -100,7 +100,7 @@ const Navbar = () => {
             <Stack direction="row" spacing={1} sx={{ mr: 2 }}>
               <Button
                 startIcon={<PasteIcon />}
-                onClick={handlePasteJobDescription}
+                onClick={() => navigate('/')}
                 variant="outlined"
                 color="inherit"
               >
@@ -111,6 +111,7 @@ const Navbar = () => {
                 onClick={handleEditResume}
                 variant="outlined"
                 color="inherit"
+                disabled={true}
               >
                 Edit Resume
               </Button>

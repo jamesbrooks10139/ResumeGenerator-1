@@ -24,7 +24,8 @@ const Register = () => {
     phone: '',
     personal_email: '',
     linkedin_url: '',
-    github_url: ''
+    github_url: '',
+    location: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -175,6 +176,16 @@ const Register = () => {
                     value={formData.github_url}
                     onChange={handleChange}
                     placeholder="Enter your GitHub profile URL"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="Enter your location (e.g., City, Country)"
                   />
                 </Grid>
               </Grid>

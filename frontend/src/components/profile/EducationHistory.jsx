@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import EducationForm from '../EducationForm';
+import { profileService } from '../../services/api';
 
 const EducationHistory = ({ education, onUpdate }) => {
   const [editingEducation, setEditingEducation] = useState(null);
@@ -23,19 +24,7 @@ const EducationHistory = ({ education, onUpdate }) => {
 
   const handleAddEducation = async (educationData) => {
     try {
-      const response = await fetch('http://localhost:3030/api/education', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(educationData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add education');
-      }
-
+      await profileService.addEducation(educationData);
       onUpdate();
       setIsOpen(false);
       setSnackbar({
@@ -55,19 +44,7 @@ const EducationHistory = ({ education, onUpdate }) => {
 
   const handleUpdateEducation = async (id, educationData) => {
     try {
-      const response = await fetch(`http://localhost:3030/api/education/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(educationData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update education');
-      }
-
+      await profileService.updateEducation(id, educationData);
       onUpdate();
       setEditingEducation(null);
       setSnackbar({
@@ -91,17 +68,7 @@ const EducationHistory = ({ education, onUpdate }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3030/api/education/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete education');
-      }
-
+      await profileService.deleteEducation(id);
       onUpdate();
       setSnackbar({
         open: true,
