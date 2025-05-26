@@ -917,7 +917,7 @@ Base your answer on the following job description:
 ${jobDescription}
 
 Question: ${question}
-Answer (in a friendly, native American English style):
+Answer (in a friendly, simple, native American English style):
 `;
 
     const completion = await openai.chat.completions.create({

@@ -90,9 +90,9 @@ const Navbar = () => {
 
   return (
     <>
-      <AppBar position="static">
+      <AppBar position="static" sx={{ background: 'linear-gradient(90deg, #2563eb 0%, #1e293b 100%)', boxShadow: 3 }}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 800, letterSpacing: 1, color: '#fff' }}>
             Resume Generator
           </Typography>
           
@@ -155,8 +155,16 @@ const Navbar = () => {
         onClose={() => setIsPasteDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            p: 3,
+            borderRadius: 3,
+            bgcolor: '#f8fafc',
+            boxShadow: 6
+          }
+        }}
       >
-        <DialogTitle>Paste Job Description</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 22, color: 'primary.main' }}>Paste Job Description</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -170,15 +178,17 @@ const Navbar = () => {
             variant="outlined"
             error={!!error}
             helperText={error}
+            sx={{ bgcolor: '#fff', borderRadius: 2 }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsPasteDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ pb: 2, pr: 3 }}>
+          <Button onClick={() => setIsPasteDialogOpen(false)} variant="outlined" color="secondary">Cancel</Button>
           <Button 
             onClick={handleGenerateResume} 
             variant="contained" 
             color="primary"
             disabled={isGenerating}
+            sx={{ fontWeight: 600 }}
           >
             {isGenerating ? 'Generating...' : 'Generate Resume'}
           </Button>

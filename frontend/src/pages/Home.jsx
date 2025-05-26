@@ -12,6 +12,8 @@ import {
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resumeService } from '../services/api';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 function Home() {
   const [jobDescription, setJobDescription] = useState('');
@@ -20,6 +22,8 @@ function Home() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Check for job description in URL parameters when component mounts
   useEffect(() => {
@@ -59,53 +63,59 @@ function Home() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 5 }}>
-      <Stack spacing={4}>
-        <Box textAlign="center">
-          <Typography variant="h3" component="h1" gutterBottom>
-            Resume Generator
-          </Typography>
-          <Typography variant="h6" color="text.secondary">
-            {isFromExtension 
-              ? "We've detected a job description from your selection. Review and generate your tailored resume."
-              : "Paste a job description below to generate a tailored resume"}
-          </Typography>
-        </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6fa', display: 'flex', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'center', py: 6 }}>
+      <Container maxWidth="sm">
+        <Paper elevation={4} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 4, boxShadow: 6, bgcolor: '#fff' }}>
+          <Stack spacing={4}>
+            <Box textAlign="center">
+              <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 800, color: '#222' }}>
+                Resume Generator
+              </Typography>
+              <Typography variant="h6" color="text.secondary">
+                {isFromExtension 
+                  ? "We've detected a job description from your selection. Review and generate your tailored resume."
+                  : "Paste a job description below to generate a tailored resume"}
+              </Typography>
+            </Box>
 
-        {isFromExtension && (
-          <Alert severity="info">
-            Job Description Detected! The job description has been automatically populated from your selection. You can modify it if needed.
-          </Alert>
-        )}
+            {isFromExtension && (
+              <Alert severity="info">
+                Job Description Detected! The job description has been automatically populated from your selection. You can modify it if needed.
+              </Alert>
+            )}
 
-        {error && (
-          <Alert severity="error" onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
+            {error && (
+              <Alert severity="error" onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
 
-        <TextField
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste the job description here..."
-          multiline
-          rows={12}
-          fullWidth
-          variant="outlined"
-        />
+            <TextField
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the job description here..."
+              multiline
+              rows={12}
+              fullWidth
+              variant="outlined"
+              sx={{ bgcolor: '#f9fafb', borderRadius: 2 }}
+            />
 
-        <Button
-          variant="contained"
-          color="primary"
-          size="large"
-          onClick={handleGenerateResume}
-          disabled={isLoading}
-          startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-        >
-          {isLoading ? 'Generating...' : 'Generate Resume'}
-        </Button>
-      </Stack>
-    </Container>
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              onClick={handleGenerateResume}
+              disabled={isLoading}
+              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              sx={{ fontWeight: 700, minHeight: 48 }}
+            >
+              {isLoading ? 'Generating...' : 'Generate Resume'}
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
 }
 
