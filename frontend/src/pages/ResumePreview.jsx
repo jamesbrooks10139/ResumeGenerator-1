@@ -15,6 +15,7 @@ import { PictureAsPdf as PdfIcon, Description as DocIcon } from '@mui/icons-mate
 import { jsPDF } from 'jspdf';
 import { renderAsync } from 'docx-preview';
 import html2canvas from 'html2canvas';
+import SidebarQA from '../components/SidebarQA';
 
 function ResumePreview() {
   const [resume, setResume] = useState(null);
@@ -156,6 +157,20 @@ function ResumePreview() {
     }
   };
 
+  // Try to get job description from resume or localStorage
+  let jobDescription = '';
+  if (resume && resume.jobDescription) {
+    jobDescription = resume.jobDescription;
+  } else {
+    try {
+      const savedResume = localStorage.getItem('generatedResume');
+      if (savedResume) {
+        const parsed = JSON.parse(savedResume);
+        jobDescription = parsed.jobDescription || '';
+      }
+    } catch {}
+  }
+
   if (!resume) {
     return (
       <Container maxWidth="md" sx={{ py: 5 }}>
@@ -165,60 +180,63 @@ function ResumePreview() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 5 }}>
-      <Stack spacing={4}>
-        <Box textAlign="center">
-          <Typography variant="h3" component="h1" gutterBottom>
-            Your Generated Resume
-          </Typography>
-        </Box>
+    <>
+      <Container maxWidth="md" sx={{ py: 5 }}>
+        <Stack spacing={4}>
+          <Box textAlign="center">
+            <Typography variant="h3" component="h1" gutterBottom>
+              Your Generated Resume
+            </Typography>
+          </Box>
 
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            height: 'calc(100vh - 300px)',
-            overflow: 'auto',
-            bgcolor: 'background.paper'
-          }}
-        >
-          <div id="docx-container" style={{ width: '100%', height: '100%' }} />
-        </Paper>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 3,
+              height: 'calc(100vh - 300px)',
+              overflow: 'auto',
+              bgcolor: 'background.paper'
+            }}
+          >
+            <div id="docx-container" style={{ width: '100%', height: '100%' }} />
+          </Paper>
 
-        <Stack direction="row" spacing={2} justifyContent="center">
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={<PdfIcon />}
-            onClick={handleDownloadPDF}
-          >
-            Download PDF
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<DocIcon />}
-            onClick={handleDownloadDOCX}
-          >
-            Download DOCX
-          </Button>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<PdfIcon />}
+              onClick={handleDownloadPDF}
+            >
+              Download PDF
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<DocIcon />}
+              onClick={handleDownloadDOCX}
+            >
+              Download DOCX
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Container>
+      <SidebarQA jobDescription={jobDescription} />
+    </>
   );
 }
 

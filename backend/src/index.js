@@ -902,3 +902,38 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`HTTP server is running on ${port}`);
 });
+
+app.post('/api/ask-question', auth, async (req, res) => {
+  try {
+    const { question, jobDescription } = req.body;
+    if (!question || !jobDescription) {
+      return res.status(400).json({ error: 'Question and job description are required.' });
+    }
+
+    const prompt = `
+You are a helpful assistant who answers questions in clear, simple, native American English. 
+Base your answer on the following job description:
+
+${jobDescription}
+
+Question: ${question}
+Answer (in a friendly, native American English style):
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-2025-04-14",
+      messages: [
+        { role: "system", content: "You are a helpful assistant who answers questions in clear, simple, native American English." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 512
+    });
+
+    const answer = completion.choices[0].message.content.trim();
+    res.json({ answer });
+  } catch (error) {
+    console.error('Error answering question:', error);
+    res.status(500).json({ error: 'Failed to generate answer.' });
+  }
+});

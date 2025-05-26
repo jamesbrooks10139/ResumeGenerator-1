@@ -46,7 +46,10 @@ function Home() {
     setError('');
     try {
       const { data } = await resumeService.generateResume(jobDescription);
-      localStorage.setItem('generatedResume', JSON.stringify(data));
+      localStorage.setItem('generatedResume', JSON.stringify({
+        ...data,
+        jobDescription // Save job description for later use
+      }));
       navigate('/preview');
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to generate resume. Please try again.');

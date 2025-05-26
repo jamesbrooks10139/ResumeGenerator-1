@@ -100,4 +100,9 @@ export const employmentService = {
     api.delete(`/api/employment/${id}`)
 };
 
+export const qaService = {
+  askQuestion: (question, jobDescription) =>
+    api.post('/api/ask-question', { question, jobDescription })
+};
+
 export default api; 
