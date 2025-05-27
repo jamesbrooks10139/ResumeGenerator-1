@@ -905,17 +905,52 @@ app.listen(port, () => {
 
 app.post('/api/ask-question', auth, async (req, res) => {
   try {
-    const { question, jobDescription } = req.body;
+    const { question, jobDescription, resume } = req.body;
     if (!question || !jobDescription) {
       return res.status(400).json({ error: 'Question and job description are required.' });
+    }
+
+    // If resume is provided, summarize it for the prompt
+    let resumeSummary = '';
+    if (resume) {
+      resumeSummary = `\n\nCandidate Resume:\n`;
+      resumeSummary += `Name: ${resume.name || ''}\n`;
+      resumeSummary += resume.summary ? `Summary: ${resume.summary}\n` : '';
+      if (resume.experience && Array.isArray(resume.experience)) {
+        resumeSummary += 'Experience:\n';
+        resume.experience.forEach((exp, i) => {
+          resumeSummary += `  - ${exp.position || ''} at ${exp.company || ''}, ${exp.location || ''} (${exp.dates || ''})\n`;
+          if (exp.bullets && Array.isArray(exp.bullets)) {
+            exp.bullets.slice(0, 2).forEach(bullet => {
+              resumeSummary += `      • ${bullet}\n`;
+            });
+          }
+        });
+      }
+      if (resume.skills && Array.isArray(resume.skills)) {
+        resumeSummary += 'Skills:\n';
+        resume.skills.forEach(section => {
+          resumeSummary += `  - ${section.section}: ${section.list?.join(', ') || ''}\n`;
+        });
+      }
+      if (resume.education && Array.isArray(resume.education)) {
+        resumeSummary += 'Education:\n';
+        resume.education.forEach(edu => {
+          resumeSummary += `  - ${edu.program || ''} at ${edu.school || ''}, ${edu.location || ''} (${edu.dates || ''})\n`;
+        });
+      }
+      if (resume.certifications && Array.isArray(resume.certifications) && resume.certifications.length > 0) {
+        resumeSummary += 'Certifications:\n';
+        resume.certifications.forEach(cert => {
+          resumeSummary += `  - ${cert.name || ''} (Issued: ${cert.issued || ''})\n`;
+        });
+      }
     }
 
     const prompt = `
 You are a helpful assistant who answers questions in clear, simple, native American English. 
 Base your answer on the following job description:
-
-${jobDescription}
-
+\n${jobDescription}\n${resumeSummary}
 Question: ${question}
 Answer (in a friendly, simple, native American English style):
 `;

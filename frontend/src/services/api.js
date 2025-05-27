@@ -101,8 +101,8 @@ export const employmentService = {
 };
 
 export const qaService = {
-  askQuestion: (question, jobDescription) =>
-    api.post('/api/ask-question', { question, jobDescription })
+  askQuestion: (question, jobDescription, resume) =>
+    api.post('/api/ask-question', { question, jobDescription, resume })
 };
 
 export default api; 

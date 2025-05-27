@@ -26,7 +26,7 @@ function ResumePreview() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     const savedResume = localStorage.getItem('generatedResume');
@@ -187,18 +187,18 @@ function ResumePreview() {
     <>
       <Container maxWidth="md" sx={{
         py: 5,
-        bgcolor: '#f4f6fa',
-        minHeight: '100vh',
-        boxShadow: 3,
-        borderRadius: 3,
+        height: 'calc(100vh - 64px)',
         position: 'relative',
-        ml: isMobile ? 0 : '0',
-        mr: isMobile ? 0 : '370px', // leave space for sidebar
         transition: 'margin 0.3s',
       }}>
         <Stack spacing={4}>
           <Box textAlign="center">
-            <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700, color: '#222' }}>
+            <Typography
+              variant={isMobile ? 'h5' : 'h3'}
+              component="h1"
+              gutterBottom
+              sx={{ fontWeight: 700, color: '#222' }}
+            >
               Your Generated Resume
             </Typography>
           </Box>
@@ -250,7 +250,7 @@ function ResumePreview() {
           </Alert>
         </Snackbar>
       </Container>
-      <SidebarQA jobDescription={jobDescription} />
+      <SidebarQA jobDescription={jobDescription} resume={resume} />
     </>
   );
 }

@@ -27,6 +27,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { resumeService } from '../services/api';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 const Navbar = () => {
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
@@ -36,6 +38,8 @@ const Navbar = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handlePasteJobDescription = () => {
     setIsPasteDialogOpen(true);
@@ -92,9 +96,11 @@ const Navbar = () => {
     <>
       <AppBar position="static" sx={{ background: 'linear-gradient(90deg, #2563eb 0%, #1e293b 100%)', boxShadow: 3 }}>
         <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 800, letterSpacing: 1, color: '#fff' }}>
-            Resume Generator
-          </Typography>
+          {!isMobile && (
+            <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 800, letterSpacing: 1, color: '#fff' }}>
+              Resume Generator
+            </Typography>
+          )}
           
           {user && (
             <Stack direction="row" spacing={1} sx={{ mr: 2 }}>
