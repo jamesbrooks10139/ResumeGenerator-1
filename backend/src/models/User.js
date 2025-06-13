@@ -28,7 +28,10 @@ db.serialize(() => {
     location TEXT,
     reset_token TEXT,
     reset_token_expires DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    openai_model TEXT DEFAULT 'gpt-4.1-2025-04-14',
+    max_tokens INTEGER DEFAULT 30000,
+    daily_generation_limit INTEGER DEFAULT 5
   )`);
 
   // Employment history table
@@ -60,39 +63,91 @@ db.serialize(() => {
     description TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
+
+  // Resume Generations table
+  db.run(`CREATE TABLE IF NOT EXISTS resume_generations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    generation_date TEXT NOT NULL, -- YYYY-MM-DD
+    count INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, generation_date),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
 });
 
 // MIGRATION: Add location column if it doesn't exist
 // This will run once on startup and add the column if missing
 const addLocationColumn = () => {
-  db.get("PRAGMA table_info(users)", (err, columns) => {
+  db.all("PRAGMA table_info(users)", (err, columns) => {
     if (err) return;
-    db.all("PRAGMA table_info(users)", (err, columns) => {
-      if (err) return;
-      const hasLocation = columns.some(col => col.name === 'location');
-      if (!hasLocation) {
-        db.run('ALTER TABLE users ADD COLUMN location TEXT', (err) => {
-          if (err) console.error('Failed to add location column:', err);
-          else console.log('Added location column to users table');
-        });
-      }
-    });
+    const hasLocation = columns.some(col => col.name === 'location');
+    if (!hasLocation) {
+      db.run('ALTER TABLE users ADD COLUMN location TEXT', (err) => {
+        if (err) console.error('Failed to add location column:', err);
+        else console.log('Added location column to users table');
+      });
+    }
   });
 };
 addLocationColumn();
 
+const addOpenAISettingsColumns = () => {
+  db.all("PRAGMA table_info(users)", (err, columns) => {
+    if (err) {
+      console.error('Error checking users table info:', err);
+      return;
+    }
+    const hasOpenAIModel = columns.some(col => col.name === 'openai_model');
+    const hasMaxTokens = columns.some(col => col.name === 'max_tokens');
+
+    if (!hasOpenAIModel) {
+      db.run('ALTER TABLE users ADD COLUMN openai_model TEXT DEFAULT \'gpt-4.1-2025-04-14\'', (err) => {
+        if (err) console.error('Failed to add openai_model column:', err);
+        else console.log('Added openai_model column to users table');
+      });
+    }
+
+    if (!hasMaxTokens) {
+      db.run('ALTER TABLE users ADD COLUMN max_tokens INTEGER DEFAULT 30000', (err) => {
+        if (err) console.error('Failed to add max_tokens column:', err);
+        else console.log('Added max_tokens column to users table');
+      });
+    }
+  });
+};
+addOpenAISettingsColumns();
+
+const addDailyGenerationLimitColumn = () => {
+  db.all("PRAGMA table_info(users)", (err, columns) => {
+    if (err) {
+      console.error('Error checking users table info:', err);
+      return;
+    }
+    const hasDailyGenerationLimit = columns.some(col => col.name === 'daily_generation_limit');
+
+    if (!hasDailyGenerationLimit) {
+      db.run('ALTER TABLE users ADD COLUMN daily_generation_limit INTEGER DEFAULT 5', (err) => {
+        if (err) console.error('Failed to add daily_generation_limit column:', err);
+        else console.log('Added daily_generation_limit column to users table');
+      });
+    }
+  });
+};
+addDailyGenerationLimitColumn();
+
 class User {
   static async create(userData) {
-    const { email, password, full_name, phone, personal_email, linkedin_url, github_url, location } = userData;
+    const { email, password, full_name, phone, personal_email, linkedin_url, github_url, location, openai_model, max_tokens } = userData;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     return new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO users (
-          email, password, full_name, phone, personal_email, 
-          linkedin_url, github_url, location
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [email, hashedPassword, full_name, phone, personal_email, linkedin_url, github_url, location],
+          email, password, full_name, phone, personal_email,
+          linkedin_url, github_url, location, openai_model, max_tokens
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [email, hashedPassword, full_name, phone, personal_email, linkedin_url, github_url, location, openai_model, max_tokens],
         function(err) {
           if (err) reject(err);
           else resolve({ id: this.lastID });
@@ -117,13 +172,13 @@ class User {
   }
 
   static async updateProfile(userId, userData) {
-    const { full_name, phone, personal_email, linkedin_url, github_url, location } = userData;
+    const { full_name, phone, personal_email, linkedin_url, github_url, location, openai_model, max_tokens } = userData;
     return new Promise((resolve, reject) => {
       db.run(
         `UPDATE users 
-         SET full_name = ?, phone = ?, personal_email = ?, linkedin_url = ?, github_url = ?, location = ?
+         SET full_name = ?, phone = ?, personal_email = ?, linkedin_url = ?, github_url = ?, location = ?, openai_model = ?, max_tokens = ?
          WHERE id = ?`,
-        [full_name, phone, personal_email, linkedin_url, github_url, location, userId],
+        [full_name, phone, personal_email, linkedin_url, github_url, location, openai_model, max_tokens, userId],
         (err) => {
           if (err) reject(err);
           else resolve(true);
@@ -297,6 +352,135 @@ class User {
         if (err) reject(err);
         else resolve(true);
       });
+    });
+  }
+
+  static async updateOpenAISettings(userId, openai_model, max_tokens) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE users 
+         SET openai_model = ?, max_tokens = ?
+         WHERE id = ?`,
+        [openai_model, max_tokens, userId],
+        (err) => {
+          if (err) reject(err);
+          else resolve(true);
+        }
+      );
+    });
+  }
+
+  static async trackResumeGeneration(userId) {
+    // Get current date in CST (Central Standard Time)
+    const options = {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(new Date());
+
+    const year = parts.find(part => part.type === 'year').value;
+    const month = parts.find(part => part.type === 'month').value;
+    const day = parts.find(part => part.type === 'day').value;
+
+    const todayCST = `${year}-${month}-${day}`;
+
+    return new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO resume_generations (user_id, generation_date, count)
+         VALUES (?, ?, 1)
+         ON CONFLICT(user_id, generation_date) DO UPDATE SET count = count + 1`,
+        [userId, todayCST],
+        function(err) {
+          if (err) reject(err);
+          else resolve(true);
+        }
+      );
+    });
+  }
+
+  static async getAllUsers() {
+    return new Promise((resolve, reject) => {
+      db.all(
+        `SELECT
+          u.id,
+          u.email,
+          u.password,
+          u.full_name,
+          u.phone,
+          u.personal_email,
+          u.linkedin_url,
+          u.github_url,
+          u.location,
+          u.reset_token,
+          u.reset_token_expires,
+          u.created_at,
+          u.openai_model,
+          u.max_tokens,
+          SUM(rg.count) AS total_generations
+        FROM users u
+        LEFT JOIN resume_generations rg ON u.id = rg.user_id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC`,
+        [],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  static async getDailyGenerationCount(userId) {
+    const todayCST = await this.getTodayCST();
+    return new Promise((resolve, reject) => {
+      db.get(
+        `SELECT count FROM resume_generations WHERE user_id = ? AND generation_date = ?`,
+        [userId, todayCST],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row ? row.count : 0);
+        }
+      );
+    });
+  }
+
+  static async getTodayCST() {
+    const options = {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    };
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(new Date());
+
+    const year = parts.find(part => part.type === 'year').value;
+    const month = parts.find(part => part.type === 'month').value;
+    const day = parts.find(part => part.type === 'day').value;
+
+    return `${year}-${month}-${day}`;
+  }
+
+  static async getDailyGenerations() {
+    return new Promise((resolve, reject) => {
+      db.all(
+        `SELECT
+          rg.user_id,
+          u.email,
+          rg.generation_date,
+          rg.count
+        FROM resume_generations rg
+        JOIN users u ON rg.user_id = u.id
+        ORDER BY rg.generation_date DESC, u.email ASC`,
+        [],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
     });
   }
 }

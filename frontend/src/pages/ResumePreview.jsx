@@ -108,8 +108,7 @@ function ResumePreview() {
       const blob = new Blob([ab], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      let accountName = resume && resume.full_name ? resume.full_name : 'resume';
-      accountName = accountName.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+      let accountName = resume && resume.name ? resume.name : 'resume';
       a.href = url;
       a.download = `${accountName}.pdf`;
       document.body.appendChild(a);
@@ -140,8 +139,9 @@ function ResumePreview() {
       const blob = new Blob([ab], { type: mimeString });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      let accountName = resume && resume.name ? resume.name : 'resume';
       a.href = url;
-      a.download = 'resume.docx';
+      a.download = `${accountName}.docx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -191,65 +191,65 @@ function ResumePreview() {
         position: 'relative',
         transition: 'margin 0.3s',
       }}>
-        <Stack spacing={4}>
-          <Box textAlign="center">
+      <Stack spacing={4}>
+        <Box textAlign="center">
             <Typography
               variant={isMobile ? 'h5' : 'h3'}
               component="h1"
               gutterBottom
               sx={{ fontWeight: 700, color: '#222' }}
             >
-              Your Generated Resume
-            </Typography>
-          </Box>
-          <Paper
-            elevation={3}
-            sx={{
-              p: 3,
+            Your Generated Resume
+          </Typography>
+        </Box>
+        <Paper
+          elevation={3}
+          sx={{
+            p: 3,
               height: 'calc(100vh - 300px)',
-              overflow: 'auto',
+            overflow: 'auto',
               bgcolor: 'background.paper',
               borderRadius: 2,
               boxShadow: 2
-            }}
-          >
-            <div id="docx-container" style={{ width: '100%', height: '100%' }} />
-          </Paper>
-          <Stack direction="row" spacing={2} justifyContent="center">
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<PdfIcon />}
-              onClick={handleDownloadPDF}
-              sx={{ minWidth: 160, fontWeight: 600 }}
-            >
-              Download PDF
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<DocIcon />}
-              onClick={handleDownloadDOCX}
-              sx={{ minWidth: 160, fontWeight: 600 }}
-            >
-              Download DOCX
-            </Button>
-          </Stack>
-        </Stack>
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={3000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          }}
         >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
+          <div id="docx-container" style={{ width: '100%', height: '100%' }} />
+        </Paper>
+        <Stack direction="row" spacing={2} justifyContent="center">
+          <Button
+            variant="contained"
+            color="error"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPDF}
+              sx={{ minWidth: 160, fontWeight: 600 }}
           >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Container>
+            Download PDF
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<DocIcon />}
+            onClick={handleDownloadDOCX}
+              sx={{ minWidth: 160, fontWeight: 600 }}
+          >
+            Download DOCX
+          </Button>
+        </Stack>
+      </Stack>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
       <SidebarQA jobDescription={jobDescription} resume={resume} />
     </>
   );

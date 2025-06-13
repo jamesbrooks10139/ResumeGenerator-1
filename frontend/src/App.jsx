@@ -1,8 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 import Home from './pages/Home';
+import Settings from './pages/Settings';
 import Navbar from './components/Navbar';
 import LoginPage from './components/auth/Login';
 import RegisterPage from './components/auth/Register';
@@ -13,11 +14,25 @@ import ResumePreview from './pages/ResumePreview';
 import ResumeEditor from './components/ResumeEditor';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
+import Admin from './pages/Admin';
 
 // Protected Route component
-const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/login" />;
+const ProtectedRoute = ({ children, component: Component }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return Component ? <Component /> : children;
 };
 
 function App() {
@@ -35,6 +50,14 @@ function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/preview" element={<ResumePreview />} />
             <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/editor" 
               element={
                 <ProtectedRoute>
@@ -50,6 +73,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/admin" element={<ProtectedRoute component={Admin} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

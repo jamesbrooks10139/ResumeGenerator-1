@@ -73,6 +73,18 @@ export const profileService = {
   updateProfile: (profileData) => 
     api.put('/api/profile', profileData),
   
+  getOpenAISettings: () =>
+    api.get('/api/settings'),
+  
+  updateOpenAISettings: (settingsData) =>
+    api.put('/api/settings', settingsData),
+
+  getAllUsers: () =>
+    api.get('/api/admin/users'),
+
+  getDailyGenerations: () =>
+    api.get('/api/admin/daily-generations'),
+
   getEmploymentHistory: () => 
     api.get('/api/profile/employment'),
   

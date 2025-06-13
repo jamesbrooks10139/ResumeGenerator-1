@@ -60,6 +60,7 @@ const Navbar = () => {
       setIsPasteDialogOpen(false);
       navigate('/preview');
     } catch (err) {
+      console.log(err)
       setError(err.response?.data?.error || err.message || 'Failed to generate resume');
     } finally {
       setIsGenerating(false);
@@ -140,6 +141,7 @@ const Navbar = () => {
                 onClose={handleProfileMenuClose}
               >
                 <MenuItem onClick={handleProfileClick}>Profile</MenuItem>
+                <MenuItem onClick={() => { handleProfileMenuClose(); navigate('/settings'); }}>Settings</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>

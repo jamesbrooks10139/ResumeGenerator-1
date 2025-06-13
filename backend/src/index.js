@@ -46,7 +46,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Setup API client
 const defaultClient = CloudmersiveConvertApiClient.ApiClient.instance;
 const Apikey = defaultClient.authentications["Apikey"];
-Apikey.apiKey = process.env.CLOUDMERSIVE_API_KEY || "c7c68fa4-552d-4bde-81bc-d5027838297c"; // Use env var or fallback
+Apikey.apiKey = process.env.CLOUDMERSIVE_API_KEY || "34e23892-5044-41a5-9867-8bd4f0fa1d8e"; // Use env var or fallback
 const apiInstance = new CloudmersiveConvertApiClient.ConvertDocumentApi();
 
 // Middleware
@@ -215,10 +215,18 @@ app.get('/api/profile', auth, async (req, res) => {
     const employmentHistory = await User.getEmploymentHistory(user.id);
     const education = await User.getEducation(user.id);
     
-    // Remove sensitive data
+    // Remove sensitive data and include OpenAI settings
     delete user.password;
     
-    res.json({ user, employmentHistory, education });
+    res.json({
+      user: {
+        ...user,
+        openai_model: user.openai_model,
+        max_tokens: user.max_tokens
+      },
+      employmentHistory,
+      education
+    });
   } catch (error) {
     console.error('Profile fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -232,6 +240,21 @@ app.put('/api/profile', auth, async (req, res) => {
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// New endpoint to update OpenAI settings
+app.put('/api/settings', auth, async (req, res) => {
+  try {
+    const { openai_model, max_tokens } = req.body;
+    if (!openai_model || !max_tokens) {
+      return res.status(400).json({ error: 'OpenAI model and max tokens are required.' });
+    }
+    await User.updateOpenAISettings(req.user.id, openai_model, max_tokens);
+    res.json({ message: 'OpenAI settings updated successfully' });
+  } catch (error) {
+    console.error('Error updating OpenAI settings:', error);
+    res.status(500).json({ error: 'Failed to update OpenAI settings.' });
   }
 });
 
@@ -320,6 +343,18 @@ app.post('/api/generate-resume', auth, async (req, res) => {
     const user = await User.findByEmail(req.user.email);
     const employmentHistory = await User.getEmploymentHistory(user.id);
     const education = await User.getEducation(user.id);
+
+    // Check daily generation limit
+    const currentGenerations = await User.getDailyGenerationCount(req.user.id);
+    if (currentGenerations >= user.daily_generation_limit) {
+      return res.status(403).json({
+        error: `Daily resume generation limit (${user.daily_generation_limit}) reached. Please try again tomorrow.`
+      });
+    }
+
+    // Use user's saved OpenAI settings or fallback to defaults
+    const selectedModel = user.openai_model || "gpt-4.1-2025-04-14";
+    const maxTokens = user.max_tokens || 30000;
 
     // Format employment history for the prompt
     const formattedHistory = employmentHistory.map(job => `
@@ -487,8 +522,10 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
 
 `;
 
+console.log(selectedModel, maxTokens)
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-2025-04-14",
+      model: selectedModel,
       messages: [
         {
           role: "system",
@@ -500,7 +537,7 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
         }
       ],
       temperature: 0.5,
-      max_tokens: 30000,
+      max_tokens: maxTokens,
       presence_penalty: 0.3,
       frequency_penalty: 0.2,
       response_format: { type: "json_object" },
@@ -510,6 +547,9 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
     // Extract the resume content from the API response
     const generatedResume = JSON.parse(completion.choices[0].message.content);
     
+    // Track resume generation
+    await User.trackResumeGeneration(req.user.id);
+
     // Initialize the resume data structure
     const resumeData = {
       name: user.full_name,
@@ -604,7 +644,7 @@ If ${user.github_url} is empty or not applicable, include it as an empty string 
     });
   } catch (error) {
     console.error('Error generating resume:', error);
-    res.status(500).json({ error: 'Failed to generate resume' });
+    res.status(500).json({ error: error.message || 'Failed to generate resume' });
   }
 });
 
@@ -887,11 +927,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Handle React routing, return all requests to React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -909,6 +944,10 @@ app.post('/api/ask-question', auth, async (req, res) => {
     if (!question || !jobDescription) {
       return res.status(400).json({ error: 'Question and job description are required.' });
     }
+
+    const user = await User.findByEmail(req.user.email);
+    const selectedModel = user.openai_model || "gpt-4.1-2025-04-14";
+    const maxTokens = user.max_tokens || 512; // Default max_tokens for Q&A can be smaller
 
     // If resume is provided, summarize it for the prompt
     let resumeSummary = '';
@@ -956,13 +995,13 @@ Answer (in a friendly, simple, native American English style):
 `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-2025-04-14",
+      model: selectedModel,
       messages: [
         { role: "system", content: "You are a helpful assistant who answers questions in clear, simple, native American English." },
         { role: "user", content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 512
+      max_tokens: maxTokens
     });
 
     const answer = completion.choices[0].message.content.trim();
@@ -971,4 +1010,53 @@ Answer (in a friendly, simple, native American English style):
     console.error('Error answering question:', error);
     res.status(500).json({ error: 'Failed to generate answer.' });
   }
+});
+
+app.get('/api/settings', auth, async (req, res) => {
+  try {
+    console.log('Fetching OpenAI settings');
+    const user = await User.findByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      openai_model: user.openai_model,
+      max_tokens: user.max_tokens
+    });
+  } catch (error) {
+    console.error('Error fetching OpenAI settings:', error);
+    res.status(500).json({ error: 'Failed to fetch OpenAI settings.' });
+  }
+});
+
+// New endpoint to get all users (Admin only, for now any authenticated user can access)
+app.get('/api/admin/users', auth, async (req, res) => {
+  try {
+    const users = await User.getAllUsers();
+    // Remove sensitive data before sending
+    const safeUsers = users.map(user => {
+      const { password, reset_token, reset_token_expires, ...safeUser } = user;
+      return safeUser;
+    });
+    res.json(safeUsers);
+  } catch (error) {
+    console.error('Error fetching all users:', error);
+    res.status(500).json({ error: 'Failed to fetch users.' });
+  }
+});
+
+// New endpoint to get daily resume generations (Admin only)
+app.get('/api/admin/daily-generations', auth, async (req, res) => {
+  try {
+    const dailyGenerations = await User.getDailyGenerations();
+    res.json(dailyGenerations);
+  } catch (error) {
+    console.error('Error fetching daily resume generations:', error);
+    res.status(500).json({ error: 'Failed to fetch daily resume generations.' });
+  }
+});
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
 });

@@ -8,7 +8,7 @@ import {
   Stack,
   CircularProgress,
   Alert,
-  Paper
+  Paper,
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { resumeService } from '../services/api';
